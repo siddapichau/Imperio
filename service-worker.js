@@ -1,9 +1,10 @@
-const CACHE_NAME = 'imperio-batista-v2';
+const CACHE_NAME = 'imperio-batista-v3';
 const ASSETS = [
   './', './index.html', './admin.html', './manifest.json', './css/style.css',
-  './js/firebase.js', './js/core.js', './js/pages.js', './js/app.js', './js/admin.js', './js/page-bridge.js',
+  './js/vendor-qrcode.js', './js/security.js', './js/firebase.js', './js/core.js', './js/editor.js', './js/ai.js', './js/pix.js', './js/pages.js', './js/app.js', './js/admin.js', './js/page-bridge.js',
   './pages/home.html', './pages/membros.html', './pages/cultos.html', './pages/agenda.html', './pages/versiculo.html', './pages/palavra.html', './pages/atividades.html', './pages/celula.html', './pages/perfil.html', './pages/postar.html', './pages/quiz.html',
-  './assets/logo.png', './assets/favicon.png'
+  './pages/dizimo.html', './pages/oracao.html', './pages/midia.html', './pages/leitura.html', './pages/aniversarios.html', './pages/sobre.html', './pages/contato.html',
+  './assets/logo.png', './assets/favicon.png', './assets/logo-azul.png', './assets/favicon-azul.png', './assets/logo-roxo.png', './assets/favicon-roxo.png'
 ];
 
 self.addEventListener('install', event => {
@@ -17,6 +18,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
+  // Chamadas de API (DeepSeek, Firebase) nunca entram em cache.
+  if (/api\.deepseek\.com|firebaseio\.com|googleapis\.com|mercadopago/.test(request.url)) return;
   event.respondWith(fetch(request).then(response => {
     const copy = response.clone();
     caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {});

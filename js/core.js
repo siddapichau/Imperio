@@ -8,9 +8,74 @@
     user: null,
     authUser: null,
     theme: localStorage.getItem('imperioTheme') || 'light',
+    palette: localStorage.getItem('imperioPalette') || '',
     mode: 'local'
   };
   const listeners = {};
+
+  // Paletas oficiais do app. Cada uma troca cores E logo (claro/escuro continuam funcionando).
+  const palettes = {
+    vinho: {
+      id: 'vinho',
+      name: 'Vinho Imperial',
+      logo: 'assets/logo.png',
+      favicon: 'assets/favicon.png',
+      light: {
+        bg: '#fbf3f5', surface: '#ffffff', surface2: '#fff0f3', text: '#261118', muted: '#7f6570',
+        primary: '#6f1025', primary2: '#a61e3a', accent: '#f2c166',
+        border: 'rgba(111, 16, 37, .16)', shadow: '0 18px 55px rgba(111, 16, 37, .14)',
+        glow1: 'rgba(242,193,102,.24)', glow2: 'rgba(166,30,58,.18)',
+        heroFrom: '#6f1025', heroTo: '#a61e3a'
+      },
+      dark: {
+        bg: '#14070c', surface: '#241017', surface2: '#351723', text: '#fff7f9', muted: '#d6b8c2',
+        primary: '#ff8aa6', primary2: '#ff4f7d', accent: '#ffd37a',
+        border: 'rgba(255,255,255,.12)', shadow: '0 18px 55px rgba(0,0,0,.42)',
+        glow1: 'rgba(255,211,122,.12)', glow2: 'rgba(255,79,125,.14)',
+        heroFrom: '#4a0a18', heroTo: '#7d1730'
+      }
+    },
+    azul: {
+      id: 'azul',
+      name: 'Azul Celeste',
+      logo: 'assets/logo-azul.png',
+      favicon: 'assets/favicon-azul.png',
+      light: {
+        bg: '#f1f5fd', surface: '#ffffff', surface2: '#e8f0fe', text: '#0e1b33', muted: '#5b6b8a',
+        primary: '#13366e', primary2: '#2a63c4', accent: '#f0c674',
+        border: 'rgba(19, 54, 110, .16)', shadow: '0 18px 55px rgba(19, 54, 110, .16)',
+        glow1: 'rgba(240,198,116,.22)', glow2: 'rgba(42,99,196,.20)',
+        heroFrom: '#13366e', heroTo: '#2a63c4'
+      },
+      dark: {
+        bg: '#050c1b', surface: '#0d1a30', surface2: '#132542', text: '#eef4ff', muted: '#a9bcdd',
+        primary: '#8ab6ff', primary2: '#4d8dfa', accent: '#ffd68a',
+        border: 'rgba(255,255,255,.12)', shadow: '0 18px 55px rgba(0,0,0,.5)',
+        glow1: 'rgba(255,214,138,.10)', glow2: 'rgba(77,141,250,.18)',
+        heroFrom: '#0a1f45', heroTo: '#1d4894'
+      }
+    },
+    roxo: {
+      id: 'roxo',
+      name: 'Roxo Vinho Escuro',
+      logo: 'assets/logo-roxo.png',
+      favicon: 'assets/favicon-roxo.png',
+      light: {
+        bg: '#f8f2fa', surface: '#ffffff', surface2: '#f3e9f7', text: '#220f2a', muted: '#75607f',
+        primary: '#4b0f43', primary2: '#7a1d63', accent: '#e7b566',
+        border: 'rgba(75, 15, 67, .16)', shadow: '0 18px 55px rgba(75, 15, 67, .16)',
+        glow1: 'rgba(231,181,102,.22)', glow2: 'rgba(122,29,99,.20)',
+        heroFrom: '#4b0f43', heroTo: '#7a1d63'
+      },
+      dark: {
+        bg: '#100517', surface: '#1e0c26', surface2: '#2c1236', text: '#faf2ff', muted: '#d0b6dc',
+        primary: '#dc9ff0', primary2: '#b45ad2', accent: '#f2cd8c',
+        border: 'rgba(255,255,255,.12)', shadow: '0 18px 55px rgba(0,0,0,.5)',
+        glow1: 'rgba(242,205,140,.10)', glow2: 'rgba(180,90,210,.18)',
+        heroFrom: '#33082f', heroTo: '#5c1350'
+      }
+    }
+  };
 
   const avatarMap = {
     dove: '🕊️', cross: '✝️', bible: '📖', fish: '🐟', lamb: '🐑', flame: '🔥', heart: '💛', crown: '👑', olive: '🌿', music: '🎶'
@@ -62,10 +127,21 @@
       phone: '(00) 0000-0000',
       email: 'contato@imperialbatista.local',
       logoPath: 'assets/logo.png',
+      palette: 'vinho',
+      allowUserPalette: true,
+      defaultMode: 'light',
       theme: {
         primary: '#6f1025',
         primary2: '#a61e3a',
         accent: '#f2c166'
+      },
+      social: { instagram: '', facebook: '', youtube: '', site: '' },
+      share: {
+        enabled: true,
+        defaultImage: '',
+        useLogoFallback: true,
+        hashtags: '#IgrejaImperialBatista',
+        signature: 'Igreja Imperial Batista — baixe nosso app.'
       },
       menus: {
         home: { id: 'home', label: 'Home', icon: '🏠', page: 'home', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 1 },
@@ -77,8 +153,48 @@
         atividades: { id: 'atividades', label: 'Atividades', icon: '🤝', page: 'atividades', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 7 },
         celula: { id: 'celula', label: 'Célula', icon: '🏡', page: 'celula', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 8 },
         quiz: { id: 'quiz', label: 'Quiz', icon: '🧠', page: 'quiz', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 9 },
-        postar: { id: 'postar', label: 'Postar', icon: '✍️', page: 'postar', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 10 },
-        perfil: { id: 'perfil', label: 'Perfil', icon: '🙋', page: 'perfil', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 11 }
+        dizimo: { id: 'dizimo', label: 'Dízimo/Oferta', icon: '💝', page: 'dizimo', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 10 },
+        postar: { id: 'postar', label: 'Postar', icon: '✍️', page: 'postar', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 11 },
+        perfil: { id: 'perfil', label: 'Perfil', icon: '🙋', page: 'perfil', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 12 },
+        oracao: { id: 'oracao', label: 'Oração', icon: '🙌', page: 'oracao', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 13 },
+        midia: { id: 'midia', label: 'Mídia', icon: '🎬', page: 'midia', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 14 },
+        leitura: { id: 'leitura', label: 'Leitura', icon: '📚', page: 'leitura', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 15 },
+        aniversarios: { id: 'aniversarios', label: 'Aniversários', icon: '🎂', page: 'aniversarios', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 16 },
+        sobre: { id: 'sobre', label: 'Sobre', icon: '⛪', page: 'sobre', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 17 },
+        contato: { id: 'contato', label: 'Contato', icon: '📍', page: 'contato', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 18 }
+      }
+    },
+    integrations: {
+      ai: {
+        provider: 'deepseek',
+        enabled: true,
+        apiKey: 'sk-b0dba64c561a48abbb03f1f71bc1b75d',
+        endpoint: 'https://api.deepseek.com/chat/completions',
+        model: 'deepseek-chat',
+        temperature: 0.7,
+        maxTokens: 700,
+        dailyLimitPerUser: 20,
+        saveHistory: true,
+        systemPrompt: 'Você é o assistente bíblico pastoral da Igreja Imperial Batista (batista, bíblica e acolhedora). O usuário escreve o que sente ou pensa. Responda SEMPRE em português do Brasil e SEMPRE em JSON válido, sem markdown, no formato: {"reference":"Livro Capítulo:Versículo","verse":"texto do versículo em português (Almeida ou NVI)","message":"aplicação pastoral acolhedora de 2 a 4 frases","prayer":"oração curta de 1 a 2 frases","theme":"tema em uma palavra"}. Nunca invente referências; use apenas versículos reais da Bíblia. Seja acolhedor, nunca julgue. Se houver sinal de risco de vida, inclua na mensagem um convite gentil para procurar a liderança da igreja e o CVV 188.'
+      },
+      pix: {
+        enabled: true,
+        provider: 'mercadopago',
+        pixKey: '',
+        keyType: 'email',
+        receiverName: 'IGREJA IMPERIAL BATISTA',
+        city: 'SAO PAULO',
+        mercadoPagoPublicKey: '',
+        mercadoPagoAccessToken: '',
+        checkoutLink: '',
+        minAmount: 5,
+        maxAmount: 10000,
+        suggestedAmounts: [5, 10, 20, 50, 100, 200],
+        purposes: ['Dízimo', 'Oferta', 'Missões', 'Ação social', 'Construção'],
+        message: 'Cada oferta sustenta missões, ação social e o cuidado com pessoas. "Cada um contribua segundo propôs no seu coração." (2 Coríntios 9:7)',
+        thanksMessage: 'Que Deus abençoe sua generosidade! Sua contribuição foi registrada.',
+        requireReceipt: false,
+        showHistory: true
       }
     },
     news: {
@@ -125,9 +241,36 @@
       cansaco: { id: 'cansaco', feeling: 'Cansaço', icon: '🌿', title: 'Cristo renova as forças', verse: 'Mateus 11:28', text: 'Jesus chama os cansados para encontrar descanso nele. Reorganize a rotina e receba cuidado da comunidade.', prayer: 'Jesus, renova minhas forças e ensina-me a descansar em ti.' }
     },
     users: {
-      pastor_demo: { id: 'pastor_demo', name: 'Wesley Studio', username: 'wesley', email: 'wesleystudio@gmail.com', password: 'Kimmy2310@', whatsapp: '(00) 99999-0001', phone: '(00) 3333-0001', address: 'Casa pastoral', role: 'pastor', city: 'Sua cidade', cellId: '', avatarKey: 'crown', note: 'Administrador principal', createdAt: now() },
-      lider_demo: { id: 'lider_demo', name: 'Líder Ana', username: 'ana.lider', email: 'lider@imperialbatista.local', password: 'imperio123', whatsapp: '(00) 99999-0002', phone: '', address: 'Centro', role: 'lider', city: 'Sua cidade', cellId: 'cel_1', avatarKey: 'olive', note: 'Líder de célula', createdAt: now() },
-      membro_demo: { id: 'membro_demo', name: 'Membro Demo', username: 'membro', email: 'membro@imperialbatista.local', password: 'imperio123', whatsapp: '(00) 99999-0003', phone: '', address: 'Bairro', role: 'membro', city: 'Sua cidade', cellId: 'cel_1', avatarKey: 'dove', note: 'Perfil de exemplo', createdAt: now() }
+      pastor_demo: { id: 'pastor_demo', name: 'Administrador', username: 'admin', email: 'admin@imperialbatista.local', passwordHash: '96804082c42f237e24695664f03c11fd741c4ad4f0be827f209161eeecbc3581', whatsapp: '', phone: '', address: '', role: 'pastor', city: '', cellId: '', avatarKey: 'crown', note: 'Administrador principal', createdAt: now() },
+      lider_demo: { id: 'lider_demo', name: 'Líder Ana', username: 'ana.lider', email: 'lider@imperialbatista.local', passwordHash: '25a92495d733cd6d022798c1ca86f9636e2d99dbfbce22985be06d4a12aa577d', whatsapp: '', phone: '', address: '', role: 'lider', city: '', cellId: 'cel_1', avatarKey: 'olive', note: 'Líder de célula', createdAt: now() },
+      membro_demo: { id: 'membro_demo', name: 'Membro Demo', username: 'membro', email: 'membro@imperialbatista.local', passwordHash: '25a92495d733cd6d022798c1ca86f9636e2d99dbfbce22985be06d4a12aa577d', whatsapp: '', phone: '', address: '', role: 'membro', city: '', cellId: 'cel_1', avatarKey: 'dove', note: 'Perfil de exemplo', createdAt: now() }
+    },
+    donations: {},
+    aiVerses: {},
+    messages: {},
+    readingProgress: {},
+    media: {
+      media_1: { id: 'media_1', title: 'Culto de Celebração — ao vivo', category: 'Culto', speaker: 'Pastor titular', description: 'Assista à transmissão do nosso culto de domingo.', embed: '', image: '', live: false, visible: true, date: now(), createdAt: now() }
+    },
+    readingPlans: {
+      plan_1: {
+        id: 'plan_1',
+        title: 'Evangelho de João em 21 dias',
+        description: 'Um capítulo por dia para conhecer Jesus mais de perto.',
+        visible: true,
+        days: {
+          d1: { id: 'd1', label: 'Dia 1', passage: 'João 1' },
+          d2: { id: 'd2', label: 'Dia 2', passage: 'João 2' },
+          d3: { id: 'd3', label: 'Dia 3', passage: 'João 3' },
+          d4: { id: 'd4', label: 'Dia 4', passage: 'João 4' },
+          d5: { id: 'd5', label: 'Dia 5', passage: 'João 5' },
+          d6: { id: 'd6', label: 'Dia 6', passage: 'João 6' },
+          d7: { id: 'd7', label: 'Dia 7', passage: 'João 7' }
+        }
+      }
+    },
+    customPages: {
+      sobre_1: { id: 'sobre_1', slug: 'sobre', title: 'Nossa história', content: '<p>A Igreja Imperial Batista nasceu do desejo de servir, amar e discipular. Somos uma família de fé comprometida com a Palavra de Deus e com o cuidado de pessoas.</p>', visible: true, order: 1 }
     },
     presence: {},
     cellPresence: {},
@@ -171,15 +314,32 @@
     const result = Object.assign({}, clone(defaultData), clone(incoming));
     result.settings = mergeDeep(defaultData.settings, incoming.settings || {});
     if (hasOwn(incoming.settings, 'menus')) result.settings.menus = mergeDeep(defaultData.settings.menus, incoming.settings.menus || {});
-    ['news', 'announcements', 'services', 'events', 'activities', 'cells', 'posts', 'devotionalVerses', 'feelingWords', 'users', 'presence', 'cellPresence', 'quizzes', 'quizResults', 'prayerRequests', 'commemorations', 'audit'].forEach(key => {
+    result.integrations = mergeDeep(defaultData.integrations, incoming.integrations || {});
+    ['news', 'announcements', 'services', 'events', 'activities', 'cells', 'posts', 'devotionalVerses', 'feelingWords', 'users', 'presence', 'cellPresence', 'quizzes', 'quizResults', 'prayerRequests', 'commemorations', 'donations', 'aiVerses', 'messages', 'media', 'readingPlans', 'readingProgress', 'customPages', 'audit'].forEach(key => {
       result[key] = hasOwn(incoming, key) ? clone(incoming[key] || {}) : clone(defaultData[key] || {});
     });
     result.users = result.users || {};
     const adminDefaults = clone(defaultData.users.pastor_demo);
-    result.users.pastor_demo = Object.assign({}, result.users.pastor_demo || {}, adminDefaults, {
-      createdAt: (result.users.pastor_demo && result.users.pastor_demo.createdAt) || adminDefaults.createdAt
+    const storedAdmin = result.users.pastor_demo || {};
+    // Preserva credenciais definidas pelo administrador; nunca mantém senha em texto puro.
+    result.users.pastor_demo = Object.assign({}, adminDefaults, storedAdmin, {
+      role: 'pastor',
+      createdAt: storedAdmin.createdAt || adminDefaults.createdAt
     });
+    Object.keys(result.users).forEach(key => sanitizeStoredUser(result.users[key]));
     return result;
+  }
+
+  // Converte qualquer senha em texto puro herdada de versões antigas em hash e remove o campo.
+  function sanitizeStoredUser(user) {
+    if (!user || typeof user !== 'object') return user;
+    const security = window.ImperioSecurity;
+    if (user.password) {
+      if (security && !security.isHashed(user.password)) user.passwordHash = security.hashPassword(user.password);
+      else if (!user.passwordHash) user.passwordHash = user.password;
+      delete user.password;
+    }
+    return user;
   }
 
   function emit(event, detail) {
@@ -299,6 +459,10 @@
     window.ImperioFirebase.onValue('appData', async data => {
       state.data = normalizeData(data || {});
       state.ready = true;
+      // Aplica o modo padrão definido pelo admin apenas se o usuário nunca escolheu.
+      if (!localStorage.getItem('imperioTheme')) {
+        state.theme = getAt('settings/defaultMode', 'light') === 'dark' ? 'dark' : 'light';
+      }
       if (state.authUser) state.user = getAt('users/' + state.authUser.uid, state.user) || state.user;
       applyTheme();
       emit('data', state.data);
@@ -446,13 +610,21 @@
       id: uid('post'),
       title: '',
       content: '',
+      summary: '',
+      image: '',
       category: 'Geral',
       authorId: state.user.id,
       authorName: state.user.name,
       status,
       createdAt: now(),
+      date: now(),
       approvedBy: status === 'approved' ? state.user.id : ''
     }, values || {});
+    if (window.ImperioEditor) {
+      post.content = window.ImperioEditor.sanitizeHtml(post.content);
+      if (!post.image) post.image = window.ImperioEditor.firstImage(post.content);
+      if (!post.summary) post.summary = window.ImperioEditor.excerpt(post.content, 180);
+    }
     await setAt('posts/' + post.id, post);
     toast(status === 'approved' ? 'Post publicado.' : 'Post enviado para aprovação da liderança.');
     return post;
@@ -467,6 +639,8 @@
       feeling: String(data.feeling || '').trim(),
       text: String(data.text || data.request || '').trim(),
       contact: String(data.contact || (state.user && (state.user.whatsapp || state.user.email)) || '').trim(),
+      public: data.public === true || data.public === 'true',
+      prayCount: 0,
       status: 'pending',
       createdAt: now()
     };
@@ -551,27 +725,116 @@
     return copied;
   }
 
+  function absoluteUrl(path) {
+    if (!path) return '';
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
+    try { return new URL(path, location.href).href; } catch (_) { return path; }
+  }
+
+  // Imagem que acompanha o compartilhamento: imagem do post quando existir, senão a logo do tema ativo.
+  function shareImageFor(payload) {
+    const share = getAt('settings/share', {});
+    const candidate = (payload && (payload.image || payload.cover)) || '';
+    if (candidate) return absoluteUrl(candidate);
+    if (share.useLogoFallback === false) return '';
+    return absoluteUrl(share.defaultImage || logoPath());
+  }
+
+  async function imageToFile(url, name) {
+    if (!url) return null;
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      if (!blob || !/^image\//.test(blob.type)) return null;
+      const extension = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+      return new File([blob], `${name || 'imperio'}.${extension}`, { type: blob.type });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function buildShareText(data) {
+    const share = getAt('settings/share', {});
+    const parts = [];
+    if (data.title) parts.push(data.title);
+    if (data.text) parts.push(data.text);
+    if (data.url) parts.push(data.url);
+    if (share.signature) parts.push(share.signature);
+    if (share.hashtags) parts.push(share.hashtags);
+    return parts.filter(Boolean).join('\n');
+  }
+
   async function shareContent(payload, channel) {
+    const settings = getAt('settings', {});
     const data = Object.assign({
-      title: 'Igreja Imperial Batista',
+      title: settings.churchName || 'Igreja Imperial Batista',
       text: 'Conheça o app da Igreja Imperial Batista.',
       url: pageUrl('home')
     }, payload || {});
-    const textToShare = `${data.title}\n${data.text}\n${data.url}`;
-    if (channel === 'native' && navigator.share) {
-      await navigator.share(data);
+    const image = shareImageFor(data);
+    const textToShare = buildShareText(data);
+
+    async function nativeShare() {
+      if (!navigator.share) return false;
+      // Tenta enviar com imagem (post ou logo do app); cai para texto se o dispositivo não aceitar arquivos.
+      if (image && navigator.canShare) {
+        const file = await imageToFile(image, 'imperial-batista');
+        if (file && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ title: data.title, text: `${data.text}\n${data.url}`, files: [file] });
+            return true;
+          } catch (error) {
+            if (error && error.name === 'AbortError') return true;
+          }
+        }
+      }
+      try {
+        await navigator.share({ title: data.title, text: data.text, url: data.url });
+        return true;
+      } catch (error) {
+        if (error && error.name === 'AbortError') return true;
+        return false;
+      }
+    }
+
+    const encodedText = encodeURIComponent(`${data.title}\n${data.text}\n${data.url}`);
+    const encodedUrl = encodeURIComponent(data.url);
+
+    if (channel === 'native') {
+      if (await nativeShare()) return true;
+      await copyText(textToShare);
+      toast('Texto copiado para compartilhar.');
       return true;
     }
-    const encodedText = encodeURIComponent(`${data.text} ${data.url}`);
-    const encodedUrl = encodeURIComponent(data.url);
     if (channel === 'whatsapp') window.open(`https://wa.me/?text=${encodedText}`, '_blank', 'noopener');
     else if (channel === 'facebook') window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`, '_blank', 'noopener');
-    else if (channel === 'instagram') {
+    else if (channel === 'telegram') window.open(`https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`, '_blank', 'noopener');
+    else if (channel === 'x') window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank', 'noopener');
+    else if (channel === 'email') window.open(`mailto:?subject=${encodeURIComponent(data.title)}&body=${encodeURIComponent(textToShare)}`, '_blank', 'noopener');
+    else if (channel === 'copy') {
+      await copyText(textToShare);
+      toast('Link e texto copiados.');
+    } else if (channel === 'image') {
+      if (await nativeShare()) return true;
+      window.open(image, '_blank', 'noopener');
+    } else if (channel === 'instagram') {
+      if (navigator.canShare && image) {
+        const file = await imageToFile(image, 'imperial-batista');
+        if (file && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ title: data.title, text: textToShare, files: [file] });
+            return true;
+          } catch (error) {
+            if (error && error.name === 'AbortError') return true;
+          }
+        }
+      }
       await copyText(textToShare).catch(() => false);
       toast('Texto copiado. Cole no Instagram para compartilhar.');
       window.open('https://www.instagram.com/', '_blank', 'noopener');
-    } else if (navigator.share) {
-      await navigator.share(data);
+    } else if (await nativeShare()) {
+      return true;
     } else {
       await copyText(textToShare);
       toast('Texto copiado para compartilhar.');
@@ -668,13 +931,89 @@
       .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
   }
 
+  function paletteList() {
+    return Object.keys(palettes).map(key => palettes[key]);
+  }
+
+  function activePaletteId() {
+    const allowUser = getAt('settings/allowUserPalette', true) !== false;
+    const userChoice = allowUser ? state.palette : '';
+    const adminChoice = getAt('settings/palette', 'vinho');
+    const chosen = userChoice || adminChoice || 'vinho';
+    return palettes[chosen] ? chosen : 'vinho';
+  }
+
+  function activePalette() {
+    return palettes[activePaletteId()];
+  }
+
+  function setPalette(id, persistUser) {
+    if (!palettes[id]) return activePaletteId();
+    if (persistUser === false) {
+      state.palette = '';
+      localStorage.removeItem('imperioPalette');
+    } else {
+      state.palette = id;
+      localStorage.setItem('imperioPalette', id);
+    }
+    applyTheme();
+    emit('theme', state.theme);
+    emit('palette', activePaletteId());
+    return activePaletteId();
+  }
+
+  function logoPath() {
+    const custom = getAt('settings/logoPath', '');
+    const palette = activePalette();
+    // Logo customizada (upload/URL) tem prioridade sobre a logo da paleta.
+    if (custom && custom !== 'assets/logo.png' && !/^assets\/logo-(azul|roxo)\.png$/.test(custom)) return custom;
+    return palette.logo;
+  }
+
+  function faviconPath() {
+    return activePalette().favicon;
+  }
+
   function applyTheme() {
     const root = document.documentElement;
-    root.setAttribute('data-theme', state.theme || 'light');
-    const theme = getAt('settings/theme', {});
-    if (theme.primary) root.style.setProperty('--primary', theme.primary);
-    if (theme.primary2) root.style.setProperty('--primary-2', theme.primary2);
-    if (theme.accent) root.style.setProperty('--accent', theme.accent);
+    const mode = state.theme === 'dark' ? 'dark' : 'light';
+    const palette = activePalette();
+    const colors = palette[mode] || palette.light;
+    root.setAttribute('data-theme', mode);
+    root.setAttribute('data-palette', palette.id);
+    const map = {
+      '--bg': colors.bg,
+      '--surface': colors.surface,
+      '--surface-2': colors.surface2,
+      '--text': colors.text,
+      '--muted': colors.muted,
+      '--primary': colors.primary,
+      '--primary-2': colors.primary2,
+      '--accent': colors.accent,
+      '--border': colors.border,
+      '--shadow': colors.shadow,
+      '--glow-1': colors.glow1,
+      '--glow-2': colors.glow2,
+      '--hero-from': colors.heroFrom,
+      '--hero-to': colors.heroTo
+    };
+    Object.keys(map).forEach(key => { if (map[key]) root.style.setProperty(key, map[key]); });
+
+    // Cores manuais do admin sobrescrevem apenas quando a paleta é a personalizada.
+    const custom = getAt('settings/theme', {});
+    if (getAt('settings/palette', 'vinho') === 'custom') {
+      if (custom.primary) root.style.setProperty('--primary', custom.primary);
+      if (custom.primary2) root.style.setProperty('--primary-2', custom.primary2);
+      if (custom.accent) root.style.setProperty('--accent', custom.accent);
+    }
+
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.setAttribute('content', colors.primary);
+    const icon = document.querySelector('link[rel="icon"]');
+    if (icon) icon.setAttribute('href', faviconPath());
+    const apple = document.querySelector('link[apple-touch-icon], link[rel="apple-touch-icon"]');
+    if (apple) apple.setAttribute('href', logoPath());
+    document.querySelectorAll('[data-app-logo]').forEach(img => { img.src = logoPath(); });
   }
 
   function toggleTheme() {
@@ -720,6 +1059,16 @@
     verseOfDay,
     wordForFeeling,
     shareContent,
+    shareImageFor,
+    absoluteUrl,
+    palettes,
+    paletteList,
+    activePalette,
+    activePaletteId,
+    setPalette,
+    logoPath,
+    faviconPath,
+    sanitizeStoredUser,
     requestNotifications,
     showNotification,
     checkDueNotifications,

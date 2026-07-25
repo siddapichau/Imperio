@@ -1,7 +1,7 @@
 {
   "name": "Igreja Imperial Batista",
   "short_name": "Imperio Batista",
-  "description": "Aplicativo da Igreja Imperial Batista: cultos, células, presença, agenda, devocionais, oração, notícias e quizzes.",
+  "description": "Aplicativo da Igreja Imperial Batista: cultos, células, presença, agenda, devocionais com IA, oração, dízimo por Pix, notícias e quizzes.",
   "start_url": "index.html",
   "scope": "./",
   "display": "standalone",
@@ -9,9 +9,81 @@
   "background_color": "#fbf3f5",
   "theme_color": "#6f1025",
   "lang": "pt-BR",
-  "categories": ["lifestyle", "education", "productivity"],
+  "categories": [
+    "lifestyle",
+    "education",
+    "productivity"
+  ],
   "icons": [
-    { "src": "assets/favicon.png", "sizes": "64x64", "type": "image/png" },
-    { "src": "assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
+    {
+      "src": "assets/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dízimo e Oferta",
+      "short_name": "Ofertar",
+      "description": "Contribua por Pix com QR Code",
+      "url": "index.html#dizimo",
+      "icons": [
+        {
+          "src": "assets/favicon.png",
+          "sizes": "64x64"
+        }
+      ]
+    },
+    {
+      "name": "Versículo com IA",
+      "short_name": "Versículo",
+      "description": "Receba um versículo para o seu momento",
+      "url": "index.html#versiculo",
+      "icons": [
+        {
+          "src": "assets/favicon.png",
+          "sizes": "64x64"
+        }
+      ]
+    },
+    {
+      "name": "Mural de oração",
+      "short_name": "Oração",
+      "description": "Envie e interceda por pedidos",
+      "url": "index.html#oracao",
+      "icons": [
+        {
+          "src": "assets/favicon.png",
+          "sizes": "64x64"
+        }
+      ]
+    },
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Cultos e eventos da igreja",
+      "url": "index.html#agenda",
+      "icons": [
+        {
+          "src": "assets/favicon.png",
+          "sizes": "64x64"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "index.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

@@ -230,27 +230,23 @@
       const data = getLocal('appData') || {};
       const users = data.users || {};
       const normalized = normalizeIdentifier(login);
+      const security = window.ImperioSecurity;
       let found = Object.values(users).find(u => normalizeIdentifier(u.email) === normalized || normalizeIdentifier(u.username) === normalized);
-      const adminProfile = {
-        id: 'pastor_demo',
-        name: 'Wesley Studio',
-        username: 'wesley',
-        email: 'wesleystudio@gmail.com',
-        password: 'Kimmy2310@',
-        role: 'pastor',
-        avatarKey: 'crown',
-        note: 'Administrador principal',
-        createdAt: new Date().toISOString()
-      };
-      if (found && found.id === 'pastor_demo') {
-        found = Object.assign({}, found, adminProfile, { createdAt: found.createdAt || adminProfile.createdAt });
-        setLocal('appData/users/pastor_demo', found);
+
+      // Migra senhas antigas em texto puro para hash, sem quebrar o login existente.
+      if (found && found.password && security) {
+        const migrated = Object.assign({}, found, { passwordHash: security.isHashed(found.password) ? found.password : security.hashPassword(found.password) });
+        delete migrated.password;
+        setLocal('appData/users/' + found.id, migrated);
+        found = migrated;
       }
-      if (!found && ['wesleystudio@gmail.com', 'wesley'].includes(normalized) && password === 'Kimmy2310@') {
-        found = adminProfile;
-        setLocal('appData/users/pastor_demo', found);
-      }
-      if (!found || (found.password && found.password !== password)) throw new Error('Email/usuário ou senha inválidos.');
+
+      if (!found) throw new Error('Email/usuário ou senha inválidos.');
+      const stored = found.passwordHash || '';
+      const valid = stored
+        ? (security ? security.verifyPassword(password, stored) : String(password) === stored)
+        : false;
+      if (!valid) throw new Error('Email/usuário ou senha inválidos.');
       const user = normalizeAuthUser({ uid: found.id, email: found.email, displayName: found.name, photoURL: found.photoURL || found.avatarUrl || '', providerId: 'local' });
       setLocalSession(user);
       return user;
@@ -268,12 +264,13 @@
       const duplicated = Object.values(users).find(u => normalizeIdentifier(u.email) === normalizeIdentifier(cleanEmail) || normalizeIdentifier(u.username) === normalizeIdentifier(cleanUsername));
       if (duplicated) throw new Error('Email ou usuário já cadastrado.');
       const uid = 'user_' + Date.now().toString(36);
+      const security = window.ImperioSecurity;
       const profile = {
         id: uid,
         name: name || cleanEmail.split('@')[0],
         username: cleanUsername,
         email: cleanEmail,
-        password,
+        passwordHash: security ? security.hashPassword(password) : '',
         role: 'membro',
         city: '',
         whatsapp: '',
