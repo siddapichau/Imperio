@@ -17,7 +17,7 @@
   <header class="topbar" id="topbar">
     <button class="icon-button mobile-only" id="openDrawer" aria-label="Abrir menu">☰</button>
     <a class="brand" href="#home" aria-label="Início">
-      <img id="brandLogo" src="assets/logo.png" alt="Logo Igreja Imperial Batista">
+      <img id="brandLogo" data-app-logo src="assets/logo.png" alt="Logo Igreja Imperial Batista">
       <span>
         <strong id="brandName">Igreja Imperial Batista</strong>
         <small id="brandSlogan">Servir, amar e discipular</small>
@@ -27,7 +27,8 @@
     <nav class="desktop-nav" id="desktopNav" aria-label="Menu principal"></nav>
 
     <div class="top-actions">
-      <button class="chip" id="themeToggle" type="button" title="Alternar tema">🌙</button>
+      <button class="chip" id="paletteToggle" type="button" title="Trocar cor do app" aria-haspopup="true">🎨</button>
+      <button class="chip" id="themeToggle" type="button" title="Alternar claro/escuro">🌙</button>
       <button class="chip" id="notificationBtn" type="button" hidden>🔔 Avisos</button>
       <button class="chip" id="installBtn" type="button" hidden>Instalar</button>
       <button class="profile-chip" id="loginOpen" type="button">Entrar</button>
@@ -38,7 +39,7 @@
     <div class="drawer-backdrop" id="drawerBackdrop"></div>
     <div class="drawer-panel" role="dialog" aria-label="Menu lateral">
       <div class="drawer-head">
-        <img src="assets/logo.png" alt="">
+        <img data-app-logo src="assets/logo.png" alt="">
         <div>
           <strong id="drawerTitle">Imperial Batista</strong>
           <small>Menu do aplicativo</small>
@@ -57,12 +58,12 @@
   <dialog class="modal" id="authModal">
     <form method="dialog" class="modal-card" id="authForm">
       <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
-      <img src="assets/logo.png" alt="" class="modal-logo">
+      <img data-app-logo src="assets/logo.png" alt="" class="modal-logo">
       <h2>Entrar no aplicativo</h2>
       <p class="muted">Acesse seu perfil, presença, células, quizzes, devocionais e pedidos de oração.</p>
 
       <label class="login-only">Email ou usuário
-        <input id="authIdentifier" type="text" autocomplete="username" placeholder="wesleystudio@gmail.com ou wesley" required>
+        <input id="authIdentifier" type="text" autocomplete="username" placeholder="seuemail@exemplo.com ou seu.usuario" required>
       </label>
       <label class="register-only" hidden>Nome completo
         <input id="authName" type="text" autocomplete="name" placeholder="Seu nome">
@@ -96,17 +97,24 @@
         <button class="btn ghost" id="registerToggle" type="button">Criar conta</button>
       </div>
       <button class="btn google" id="googleLogin" type="button">Entrar com Google</button>
-      <p class="help-text" id="authHelp">Admin local: wesleystudio@gmail.com / Kimmy2310@</p>
+      <p class="help-text" id="authHelp">Esqueceu a senha? Fale com a secretaria da igreja.</p>
     </form>
   </dialog>
+
+  <div class="palette-menu" id="paletteMenu" hidden role="menu" aria-label="Temas de cor"></div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+  <script src="js/vendor-qrcode.js"></script>
+  <script src="js/security.js"></script>
   <script src="js/firebase.js"></script>
   <script src="js/core.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/pix.js"></script>
   <script src="js/pages.js"></script>
   <script src="js/app.js"></script>
 </body>

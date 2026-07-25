@@ -12,11 +12,12 @@
 <body class="admin-body">
   <header class="admin-topbar">
     <a class="brand" href="index.html">
-      <img src="assets/logo.png" alt="Logo">
+      <img data-app-logo src="assets/logo.png" alt="Logo">
       <span><strong>Admin Imperial Batista</strong><small>Painel editável do aplicativo</small></span>
     </a>
     <div class="top-actions">
-      <button class="chip" id="adminThemeToggle" type="button">🌙</button>
+      <button class="chip" id="adminPaletteToggle" type="button" title="Trocar cor do painel">🎨</button>
+      <button class="chip" id="adminThemeToggle" type="button" title="Alternar claro/escuro">🌙</button>
       <a class="chip" href="index.html">Ver app</a>
       <button class="profile-chip" id="adminLoginOpen" type="button">Entrar</button>
     </div>
@@ -27,13 +28,13 @@
   <dialog class="modal" id="adminAuthModal">
     <form method="dialog" class="modal-card" id="adminAuthForm">
       <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
-      <img src="assets/logo.png" alt="" class="modal-logo">
+      <img data-app-logo src="assets/logo.png" alt="" class="modal-logo">
       <h2>Entrar como liderança</h2>
       <p class="muted">Somente pastor/admin acessa tudo. Líderes e editores podem ter permissões por cargo.</p>
-      <label>Email ou usuário <input id="adminAuthIdentifier" type="text" value="wesleystudio@gmail.com" autocomplete="username" required></label>
+      <label>Email ou usuário <input id="adminAuthIdentifier" type="text" placeholder="email ou usuário" autocomplete="username" required></label>
       <label>Senha
         <span class="password-field">
-          <input id="adminAuthPassword" type="password" value="Kimmy2310@" autocomplete="current-password" required>
+          <input id="adminAuthPassword" type="password" placeholder="sua senha" autocomplete="current-password" required>
           <button class="field-icon" type="button" data-toggle-password="#adminAuthPassword" aria-label="Mostrar senha">👁️</button>
         </span>
       </label>
@@ -42,14 +43,22 @@
     </form>
   </dialog>
 
+  <div class="palette-menu" id="paletteMenu" hidden role="menu" aria-label="Temas de cor"></div>
+
   <dialog id="jsonDialog" class="modal"></dialog>
+  <dialog id="formDialog" class="modal"></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+  <script src="js/vendor-qrcode.js"></script>
+  <script src="js/security.js"></script>
   <script src="js/firebase.js"></script>
   <script src="js/core.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/pix.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

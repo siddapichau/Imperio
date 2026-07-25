@@ -12,6 +12,8 @@
   const registerToggle = document.getElementById('registerToggle');
   const googleLogin = document.getElementById('googleLogin');
   const themeToggle = document.getElementById('themeToggle');
+  const paletteToggle = document.getElementById('paletteToggle');
+  const paletteMenu = document.getElementById('paletteMenu');
   const installBtn = document.getElementById('installBtn');
   const notificationBtn = document.getElementById('notificationBtn');
   let deferredInstall = null;
@@ -51,9 +53,39 @@
     document.getElementById('brandName').textContent = settings.churchName || 'Igreja Imperial Batista';
     document.getElementById('brandSlogan').textContent = settings.slogan || '';
     document.getElementById('drawerTitle').textContent = settings.appName || settings.churchName || 'Imperial Batista';
-    const logo = settings.logoPath || 'assets/logo.png';
-    document.getElementById('brandLogo').src = logo;
+    document.querySelectorAll('[data-app-logo]').forEach(img => { img.src = app.logoPath(); });
     themeToggle.textContent = app.state.theme === 'dark' ? '☀️' : '🌙';
+    if (paletteToggle) {
+      paletteToggle.hidden = app.getAt('settings/allowUserPalette', true) === false;
+      paletteToggle.title = 'Tema: ' + app.activePalette().name;
+    }
+  }
+
+  /** Menu para o membro escolher a cor do app (quando o admin permitir). */
+  function renderPaletteMenu() {
+    if (!paletteMenu) return;
+    const activeId = app.activePaletteId();
+    const officialId = app.getAt('settings/palette', 'vinho');
+    paletteMenu.innerHTML = `<div class="palette-menu-head">Cor do aplicativo</div>
+      ${app.paletteList().map(palette => `<button type="button" class="palette-option ${activeId === palette.id ? 'active' : ''}" data-palette="${app.escapeHtml(palette.id)}" role="menuitem">
+        <img src="${app.escapeHtml(palette.logo)}" alt="">
+        <span><strong>${app.escapeHtml(palette.name)}</strong>${officialId === palette.id ? '<small>tema oficial da igreja</small>' : ''}</span>
+        <i class="swatch" style="background:linear-gradient(135deg, ${app.escapeHtml(palette.light.primary)}, ${app.escapeHtml(palette.light.primary2)})"></i>
+      </button>`).join('')}
+      <button type="button" class="palette-option" data-palette="reset" role="menuitem"><span><strong>Usar tema da igreja</strong><small>volta para o padrão definido pelo pastor</small></span></button>
+      <div class="palette-menu-foot">
+        <button type="button" class="btn small ghost" id="paletteModeBtn">${app.state.theme === 'dark' ? '☀️ Modo claro' : '🌙 Modo escuro'}</button>
+      </div>`;
+    paletteMenu.querySelectorAll('[data-palette]').forEach(btn => btn.onclick = () => {
+      const id = btn.dataset.palette;
+      app.setPalette(id === 'reset' ? '' : id, id !== 'reset');
+      renderBrand();
+      renderPaletteMenu();
+      app.toast(id === 'reset' ? 'Tema da igreja restaurado.' : 'Tema alterado.');
+      paletteMenu.hidden = true;
+    });
+    const modeBtn = paletteMenu.querySelector('#paletteModeBtn');
+    if (modeBtn) modeBtn.onclick = () => { app.toggleTheme(); renderBrand(); renderPaletteMenu(); };
   }
 
   function renderUser() {
@@ -118,6 +150,18 @@
   document.getElementById('closeDrawer').onclick = closeDrawer;
   document.getElementById('drawerBackdrop').onclick = closeDrawer;
   themeToggle.onclick = () => { app.toggleTheme(); renderBrand(); };
+
+  if (paletteToggle && paletteMenu) {
+    paletteToggle.onclick = event => {
+      event.stopPropagation();
+      renderPaletteMenu();
+      paletteMenu.hidden = !paletteMenu.hidden;
+    };
+    document.addEventListener('click', event => {
+      if (!paletteMenu.hidden && !paletteMenu.contains(event.target) && event.target !== paletteToggle) paletteMenu.hidden = true;
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') paletteMenu.hidden = true; });
+  }
 
   registerToggle.onclick = () => {
     registering = !registering;
@@ -213,6 +257,7 @@
   });
   app.on('auth', () => { renderNav(); renderUser(); });
   app.on('theme', renderBrand);
+  app.on('palette', renderBrand);
 
   app.init().then(() => {
     renderBrand();
