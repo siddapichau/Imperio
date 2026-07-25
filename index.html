@@ -60,44 +60,50 @@
       <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
       <img data-app-logo src="assets/logo.png" alt="" class="modal-logo">
       <h2>Entrar no aplicativo</h2>
-      <p class="muted">Acesse seu perfil, presença, células, quizzes, devocionais e pedidos de oração.</p>
+      <p class="muted auth-desc">Acesse seu perfil, presença, células, quizzes, devocionais e pedidos de oração.</p>
 
-      <label class="login-only">Email ou usuário
-        <input id="authIdentifier" type="text" autocomplete="username" placeholder="seuemail@exemplo.com ou seu.usuario" required>
-      </label>
-      <label class="register-only" hidden>Nome completo
-        <input id="authName" type="text" autocomplete="name" placeholder="Seu nome">
-      </label>
-      <label class="register-only" hidden>Nome de usuário
-        <input id="authUsername" type="text" autocomplete="username" placeholder="ex: maria.silva" pattern="[A-Za-z0-9._-]{3,24}">
-      </label>
-      <label class="register-only" hidden>Email
-        <input id="authEmail" type="email" autocomplete="email" placeholder="seuemail@exemplo.com">
-      </label>
+      <div class="login-only">
+        <label>Login (email ou usuário)
+          <input id="authIdentifier" type="text" autocomplete="username" placeholder="seuemail@exemplo.com ou seu.usuario" required>
+        </label>
+      </div>
+      <div class="register-only" hidden>
+        <label>Nome completo
+          <input id="authName" type="text" autocomplete="name" placeholder="Seu nome completo">
+        </label>
+        <label>Nome de usuário
+          <input id="authUsername" type="text" autocomplete="username" placeholder="ex: maria.silva" pattern="[A-Za-z0-9._-]{3,24}">
+        </label>
+        <label>Email
+          <input id="authEmail" type="email" autocomplete="email" placeholder="seuemail@exemplo.com">
+        </label>
+      </div>
       <label>Senha
         <span class="password-field">
           <input id="authPassword" type="password" autocomplete="current-password" placeholder="Sua senha" required>
           <button class="field-icon" type="button" data-toggle-password="#authPassword" aria-label="Mostrar senha">👁️</button>
         </span>
       </label>
-      <label class="register-only" hidden>Confirmar senha
-        <span class="password-field">
-          <input id="authConfirmPassword" type="password" autocomplete="new-password" placeholder="Repita a senha">
-          <button class="field-icon" type="button" data-toggle-password="#authConfirmPassword" aria-label="Mostrar senha">👁️</button>
-        </span>
-      </label>
+      <div class="register-only" hidden>
+        <label>Confirmar senha
+          <span class="password-field">
+            <input id="authConfirmPassword" type="password" autocomplete="new-password" placeholder="Repita a senha">
+            <button class="field-icon" type="button" data-toggle-password="#authConfirmPassword" aria-label="Mostrar senha">👁️</button>
+          </span>
+        </label>
+        <p class="help-text">A senha deve ter no mínimo 8 caracteres, letra maiúscula, minúscula, número e símbolo.</p>
+      </div>
       <label class="checkbox-line login-only">
         <input id="rememberUser" type="checkbox">
         <span>Lembrar usuário neste dispositivo</span>
       </label>
-      <p class="help-text register-only" hidden>A senha deve ter no mínimo 8 caracteres, letra maiúscula, minúscula, número e símbolo.</p>
 
       <div class="row gap wrap auth-actions">
         <button class="btn primary" id="emailLogin" type="submit">Entrar</button>
         <button class="btn ghost" id="registerToggle" type="button">Criar conta</button>
       </div>
-      <button class="btn google" id="googleLogin" type="button">Entrar com Google</button>
-      <p class="help-text" id="authHelp">Esqueceu a senha? Fale com a secretaria da igreja.</p>
+      <button class="btn google" id="googleLogin" type="button">Entrar com Google (mesmo email = mesma conta admin)</button>
+      <p class="help-text" id="authHelp">Se seu email já é admin, ao entrar com Google no mesmo email o sistema abre a mesma conta automaticamente. Esqueceu a senha? Fale com a secretaria.</p>
     </form>
   </dialog>
 

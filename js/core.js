@@ -157,10 +157,10 @@
         postar: { id: 'postar', label: 'Postar', icon: '✍️', page: 'postar', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 11 },
         perfil: { id: 'perfil', label: 'Perfil', icon: '🙋', page: 'perfil', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 12 },
         oracao: { id: 'oracao', label: 'Oração', icon: '🙌', page: 'oracao', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 13 },
-        midia: { id: 'midia', label: 'Mídia', icon: '🎬', page: 'midia', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 14 },
-        leitura: { id: 'leitura', label: 'Leitura', icon: '📚', page: 'leitura', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 15 },
-        aniversarios: { id: 'aniversarios', label: 'Aniversários', icon: '🎂', page: 'aniversarios', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 16 },
-        sobre: { id: 'sobre', label: 'Sobre', icon: '⛪', page: 'sobre', visible: false, roles: ['membro', 'editor', 'lider', 'pastor'], order: 17 },
+        midia: { id: 'midia', label: 'Mídia', icon: '🎬', page: 'midia', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 14 },
+        leitura: { id: 'leitura', label: 'Leitura', icon: '📚', page: 'leitura', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 15 },
+        aniversarios: { id: 'aniversarios', label: 'Aniversários', icon: '🎂', page: 'aniversarios', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 16 },
+        sobre: { id: 'sobre', label: 'Sobre', icon: '⛪', page: 'sobre', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 17 },
         contato: { id: 'contato', label: 'Contato', icon: '📍', page: 'contato', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 18 }
       }
     },
@@ -315,6 +315,20 @@
     result.settings = mergeDeep(defaultData.settings, incoming.settings || {});
     if (hasOwn(incoming.settings, 'menus')) result.settings.menus = mergeDeep(defaultData.settings.menus, incoming.settings.menus || {});
     result.integrations = mergeDeep(defaultData.integrations, incoming.integrations || {});
+    // Garante que menus sejam todos visíveis por padrão (novas páginas aparecem automaticamente)
+    try {
+      Object.keys(defaultData.settings.menus).forEach(key => {
+        if (result.settings.menus[key]) result.settings.menus[key].visible = true;
+      });
+    } catch (_) {}
+    // Garante chave DeepSeek padrão se não estiver configurada (evita "não aparece" ao pedir versículo)
+    try {
+      if (!result.integrations.ai) result.integrations.ai = clone(defaultData.integrations.ai);
+      if (!result.integrations.ai.apiKey) result.integrations.ai.apiKey = defaultData.integrations.ai.apiKey;
+      if (!result.integrations.ai.endpoint) result.integrations.ai.endpoint = defaultData.integrations.ai.endpoint;
+      if (!result.integrations.ai.model) result.integrations.ai.model = defaultData.integrations.ai.model;
+      if (result.integrations.ai.enabled == null) result.integrations.ai.enabled = true;
+    } catch (_) {}
     ['news', 'announcements', 'services', 'events', 'activities', 'cells', 'posts', 'devotionalVerses', 'feelingWords', 'users', 'presence', 'cellPresence', 'quizzes', 'quizResults', 'prayerRequests', 'commemorations', 'donations', 'aiVerses', 'messages', 'media', 'readingPlans', 'readingProgress', 'customPages', 'audit'].forEach(key => {
       result[key] = hasOwn(incoming, key) ? clone(incoming[key] || {}) : clone(defaultData[key] || {});
     });
@@ -411,10 +425,47 @@
     return `<div class="avatar ${cls || ''} row center" aria-label="Avatar" style="font-size:2rem">${escapeHtml(avatar)}</div>`;
   }
 
+  function findUserByNormalizedEmail(email) {
+    const norm = normalizeIdentifier(email || '');
+    if (!norm) return null;
+    const users = getAt('users', {}) || {};
+    return Object.values(users).find(u => normalizeIdentifier(u.email) === norm) || null;
+  }
+
   async function ensureProfile(authUser) {
     if (!authUser) return null;
     const userPath = 'users/' + authUser.uid;
     let profile = getAt(userPath, null);
+
+    // === VINCULAÇÃO POR EMAIL: se logou com Google e já existe conta com mesmo email (ex: admin), usa a conta existente ===
+    if (!profile) {
+      const existingByEmail = findUserByNormalizedEmail(authUser.email);
+      if (existingByEmail) {
+        // Atualiza dados do perfil existente com info do Google (foto, nome) mas mantém role/admin
+        profile = Object.assign({}, existingByEmail, {
+          // Mantém id original para preservar cargo/role (pastor etc)
+          photoURL: authUser.photoURL || existingByEmail.photoURL || '',
+          displayName: existingByEmail.name || authUser.displayName || existingByEmail.displayName || '',
+          updatedAt: now(),
+          lastLoginProvider: authUser.providerId || 'google',
+          lastLoginAt: now()
+        });
+        // Se o uid do auth for diferente do id existente (ex: Google uid vs pastor_demo), mescla:
+        // 1) Atualiza o registro original com foto Google se não tinha
+        // 2) Cria também um alias users/{authUser.uid} apontando para o mesmo perfil para consistência futura
+        //    (mas o app usará o perfil original com role correto)
+        await setAt('users/' + existingByEmail.id, profile);
+        if (existingByEmail.id !== authUser.uid) {
+          // Cria alias opcional para facilitar buscas futuras por uid
+          const alias = Object.assign({}, profile, { id: authUser.uid, linkedTo: existingByEmail.id });
+          try { await setAt(userPath, alias); } catch (_) {}
+          // Retorna perfil canônico (admin original) para manter permissão
+          return profile;
+        }
+        return profile;
+      }
+    }
+
     if (!profile) {
       profile = {
         id: authUser.uid,
@@ -429,12 +480,19 @@
         cellId: '',
         avatarKey: 'dove',
         photoURL: authUser.photoURL || '',
+        providerId: authUser.providerId || 'password',
         createdAt: now()
       };
       await setAt(userPath, profile);
-    } else if (authUser.photoURL && !profile.photoURL) {
-      profile.photoURL = authUser.photoURL;
-      await updateAt(userPath, { photoURL: authUser.photoURL });
+    } else {
+      const updates = {};
+      if (authUser.photoURL && !profile.photoURL) updates.photoURL = authUser.photoURL;
+      if (authUser.displayName && !profile.name) updates.name = authUser.displayName;
+      if (authUser.email && !profile.email) updates.email = authUser.email;
+      if (Object.keys(updates).length) {
+        await updateAt(userPath, updates);
+        profile = Object.assign({}, profile, updates);
+      }
     }
     return profile;
   }
@@ -463,7 +521,15 @@
       if (!localStorage.getItem('imperioTheme')) {
         state.theme = getAt('settings/defaultMode', 'light') === 'dark' ? 'dark' : 'light';
       }
-      if (state.authUser) state.user = getAt('users/' + state.authUser.uid, state.user) || state.user;
+      if (state.authUser) {
+        let profile = getAt('users/' + state.authUser.uid, null);
+        if (!profile) profile = findUserByNormalizedEmail(state.authUser.email);
+        if (profile && profile.linkedTo) {
+          const canonical = getAt('users/' + profile.linkedTo, null);
+          if (canonical) profile = canonical;
+        }
+        state.user = profile || state.user;
+      }
       applyTheme();
       emit('data', state.data);
       emit('ready', state);
