@@ -7,7 +7,18 @@
   const loginBtn = document.getElementById('adminLoginOpen');
   const themeBtn = document.getElementById('adminThemeToggle');
   const jsonDialog = document.getElementById('jsonDialog');
+  const adminDrawer = document.getElementById('adminDrawer');
+  const adminMobileNav = document.getElementById('adminMobileNav');
+  const openAdminDrawerBtn = document.getElementById('openAdminDrawer');
+  const closeAdminDrawerBtn = document.getElementById('closeAdminDrawer');
+  const adminDrawerBackdrop = document.getElementById('adminDrawerBackdrop');
   let activeTab = localStorage.getItem('imperioAdminTab') || 'dashboard';
+
+  function openAdminDrawer() { if (adminDrawer) adminDrawer.setAttribute('aria-hidden', 'false'); }
+  function closeAdminDrawer() { if (adminDrawer) adminDrawer.setAttribute('aria-hidden', 'true'); }
+  if (openAdminDrawerBtn) openAdminDrawerBtn.onclick = openAdminDrawer;
+  if (closeAdminDrawerBtn) closeAdminDrawerBtn.onclick = closeAdminDrawer;
+  if (adminDrawerBackdrop) adminDrawerBackdrop.onclick = closeAdminDrawer;
 
   const tabs = [
     ['dashboard', '📊 Dashboard'],
@@ -88,8 +99,23 @@
       services: list('services').length,
       cells: list('cells').length
     };
-    root.innerHTML = `<section class="admin-hero"><div class="hero"><span class="badge">Painel pastor/admin</span><h1>Editar todo o aplicativo</h1><p>Altere menus, identidade visual, conteúdo, cargos, células, presença e quizzes. Tudo é salvo no Firebase ou no modo local.</p></div><div class="grid"><div class="card"><h2>${e(user.name)}</h2><p class="muted">Cargo: ${e(user.role)}<br>Modo de dados: ${e(window.ImperioFirebase.getMode())}</p></div><div class="grid two"><div class="card kpi"><strong>${stats.users}</strong><span>usuários</span></div><div class="card kpi"><strong>${stats.pending}</strong><span>posts pendentes</span></div><div class="card kpi"><strong>${stats.services}</strong><span>cultos</span></div><div class="card kpi"><strong>${stats.cells}</strong><span>células</span></div></div></div></section><nav class="admin-tabs">${tabs.map(([id, label]) => `<button class="btn small admin-tab ${activeTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('')}</nav><section id="adminContent">${content}</section>`;
-    root.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { activeTab = btn.dataset.tab; localStorage.setItem('imperioAdminTab', activeTab); render(); });
+    const tabsHtml = tabs.map(([id, label]) => `<button class="btn small admin-tab ${activeTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('');
+    const mobileTabsHtml = tabs.map(([id, label]) => `<button class="nav-link ${activeTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('');
+    const currentLabel = (tabs.find(t => t[0] === activeTab) || ['',''])[1] || activeTab;
+    root.innerHTML = `<section class="admin-hero"><div class="hero"><span class="badge">Painel pastor/admin</span><h1>Editar todo o aplicativo</h1><p>Altere menus, identidade visual, conteúdo, cargos, células, presença e quizzes. Tudo salvo no Firebase. Google vincula por email ao mesmo admin.</p></div><div class="grid"><div class="card"><h2>${e(user.name)}</h2><p class="muted">Cargo: ${e(user.role)}<br>Email: ${e(user.email || '')}<br>Modo: ${e(window.ImperioFirebase.getMode())}${user.linkedTo ? '<br><small>🔗 Conta vinculada via Google (mesmo email)</small>' : ''}</p></div><div class="grid two"><div class="card kpi"><strong>${stats.users}</strong><span>usuários</span></div><div class="card kpi"><strong>${stats.pending}</strong><span>posts pendentes</span></div><div class="card kpi"><strong>${stats.services}</strong><span>cultos</span></div><div class="card kpi"><strong>${stats.cells}</strong><span>células</span></div></div></div></section>
+      <div class="admin-mobile-bar"><button class="btn primary small" id="openDrawerFromContent">☰ ${currentLabel}</button><select id="adminTabSelect" class="admin-tab-select">${tabs.map(([id, label]) => `<option value="${id}" ${activeTab===id?'selected':''}>${label}</option>`).join('')}</select></div>
+      <nav class="admin-tabs">${tabsHtml}</nav><section id="adminContent">${content}</section>`;
+    root.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { activeTab = btn.dataset.tab; localStorage.setItem('imperioAdminTab', activeTab); closeAdminDrawer(); render(); });
+    const select = root.querySelector('#adminTabSelect');
+    if (select) select.onchange = () => { activeTab = select.value; localStorage.setItem('imperioAdminTab', activeTab); render(); };
+    const openFromContent = root.querySelector('#openDrawerFromContent');
+    if (openFromContent) openFromContent.onclick = openAdminDrawer;
+    if (adminMobileNav) {
+      adminMobileNav.innerHTML = mobileTabsHtml;
+      adminMobileNav.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { activeTab = btn.dataset.tab; localStorage.setItem('imperioAdminTab', activeTab); closeAdminDrawer(); render(); });
+    }
+    const mobileLogout = document.getElementById('adminMobileLogout');
+    if (mobileLogout) mobileLogout.onclick = () => { if (confirm('Sair?')) app.signOut(); };
   }
 
   function dashboard() {
@@ -152,7 +178,22 @@
 
   function firebaseTab() {
     const cfg = window.ImperioFirebase.getConfig();
-    return `<section class="card"><h2>Configuração Firebase Web</h2><p class="muted">O databaseURL já está preenchido. Para login real por Email/Google, copie as credenciais Web do console Firebase.</p><form id="firebaseForm" class="form-grid"><label>apiKey<input name="apiKey" value="${e(cfg.apiKey || '')}" placeholder="AIza..."></label><label>authDomain<input name="authDomain" value="${e(cfg.authDomain || '')}"></label><label class="full">databaseURL<input name="databaseURL" value="${e(cfg.databaseURL || '')}"></label><label>projectId<input name="projectId" value="${e(cfg.projectId || '')}"></label><label>storageBucket<input name="storageBucket" value="${e(cfg.storageBucket || '')}"></label><label>messagingSenderId<input name="messagingSenderId" value="${e(cfg.messagingSenderId || '')}"></label><label>appId<input name="appId" value="${e(cfg.appId || '')}"></label><div class="full"><button class="btn primary" type="submit">Salvar configuração</button></div></form><div class="card compact section"><strong>Modo atual:</strong> ${e(window.ImperioFirebase.getMode())}. Após salvar config, recarregue a página.</div></section>`;
+    const isConfigured = Boolean(cfg.apiKey && cfg.appId);
+    return `<section class="card"><h2>Configuração Firebase Web — ${isConfigured ? '✅ Configurado' : '⚠️ Pendente'}</h2><p class="muted">Firebase configurado com projeto <strong>imperio-28408</strong>. Login por Email/Senha e Google já funciona. Se logar com Google usando o mesmo email de uma conta admin existente, o sistema vincula automaticamente à mesma conta (não cria conta duplicada).</p>
+      <div class="card compact" style="margin-bottom:14px; background:var(--surface-2)"><p class="muted" style="margin:0"><strong>apiKey:</strong> ${e(cfg.apiKey ? cfg.apiKey.slice(0,10)+'...'+cfg.apiKey.slice(-6) : '')}<br><strong>authDomain:</strong> ${e(cfg.authDomain||'')}<br><strong>databaseURL:</strong> ${e(cfg.databaseURL||'')}<br><strong>projectId:</strong> ${e(cfg.projectId||'')}<br><strong>storageBucket:</strong> ${e(cfg.storageBucket||'')}<br><strong>messagingSenderId:</strong> ${e(cfg.messagingSenderId||'')}<br><strong>appId:</strong> ${e(cfg.appId? cfg.appId.slice(0,12)+'...' : '')}</p></div>
+      <form id="firebaseForm" class="form-grid">
+        <label>apiKey<input name="apiKey" value="${e(cfg.apiKey || '')}" placeholder="AIza..."></label>
+        <label>authDomain<input name="authDomain" value="${e(cfg.authDomain || '')}"></label>
+        <label class="full">databaseURL<input name="databaseURL" value="${e(cfg.databaseURL || '')}"></label>
+        <label>projectId<input name="projectId" value="${e(cfg.projectId || '')}"></label>
+        <label>storageBucket<input name="storageBucket" value="${e(cfg.storageBucket || '')}"></label>
+        <label>messagingSenderId<input name="messagingSenderId" value="${e(cfg.messagingSenderId || '')}"></label>
+        <label>appId<input name="appId" value="${e(cfg.appId || '')}"></label>
+        <div class="full row gap wrap"><button class="btn primary" type="submit">Salvar configuração</button><button class="btn ghost" type="button" id="resetFirebase">Restaurar padrão imperio-28408</button></div>
+      </form>
+      <div class="card compact section"><strong>Modo atual:</strong> ${e(window.ImperioFirebase.getMode())}. ${isConfigured ? 'Conectado ao Firebase — login real ativo.' : 'Modo local — preencha apiKey para conectar.'} Recarregue após salvar.</div>
+      <div class="card compact section"><h3>🔗 Vinculação de conta Google</h3><p class="muted">Quando alguém já tem conta com email/senha (ex: admin) e depois entra com Google no <strong>mesmo email</strong>, o app detecta e abre a mesma conta com cargo pastor/admin. Se for a primeira vez com Google e o email já existe, o app pede a senha para vincular automaticamente.</p></div>
+    </section>`;
   }
 
   function temas() {
@@ -580,6 +621,20 @@
       const values = Object.fromEntries(new FormData(firebaseForm).entries());
       window.ImperioFirebase.saveConfig(values);
       app.toast('Configuração salva. Recarregue a página para conectar.');
+    };
+    const resetFirebase = root.querySelector('#resetFirebase');
+    if (resetFirebase) resetFirebase.onclick = () => {
+      window.ImperioFirebase.saveConfig({
+        apiKey: 'AIzaSyBtz2E3I3YLV1X72Xxy1EUrahiaQZmPiCs',
+        authDomain: 'imperio-28408.firebaseapp.com',
+        databaseURL: 'https://imperio-28408-default-rtdb.firebaseio.com',
+        projectId: 'imperio-28408',
+        storageBucket: 'imperio-28408.firebasestorage.app',
+        messagingSenderId: '20222357769',
+        appId: '1:20222357769:web:59d1e33de346efa6b6e3d8'
+      });
+      app.toast('Configuração padrão imperio-28408 restaurada. Recarregando...');
+      setTimeout(()=>location.reload(), 900);
     };
 
     bindTemas();

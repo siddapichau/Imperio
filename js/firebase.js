@@ -6,13 +6,13 @@
   const CONFIG_KEY = 'imperioFirebaseConfig';
 
   const defaultConfig = {
-    apiKey: '',
+    apiKey: 'AIzaSyBtz2E3I3YLV1X72Xxy1EUrahiaQZmPiCs',
     authDomain: 'imperio-28408.firebaseapp.com',
-    databaseURL: 'https://imperio-28408-default-rtdb.firebaseio.com/',
+    databaseURL: 'https://imperio-28408-default-rtdb.firebaseio.com',
     projectId: 'imperio-28408',
-    storageBucket: 'imperio-28408.appspot.com',
-    messagingSenderId: '',
-    appId: ''
+    storageBucket: 'imperio-28408.firebasestorage.app',
+    messagingSenderId: '20222357769',
+    appId: '1:20222357769:web:59d1e33de346efa6b6e3d8'
   };
 
   let app = null;
@@ -210,6 +210,28 @@
     return String(value || '').trim().toLowerCase();
   }
 
+  function findUserByEmail(usersObj, email) {
+    const norm = normalizeIdentifier(email);
+    if (!norm) return null;
+    const list = usersObj ? Object.values(usersObj) : [];
+    return list.find(u => normalizeIdentifier(u.email) === norm) || null;
+  }
+
+  async function resolveEmailForLogin(inputIdentifier) {
+    // Suporta login por username mesmo em modo Firebase buscando no Realtime DB / local
+    const raw = String(inputIdentifier || '').trim();
+    if (!raw) return raw;
+    if (raw.includes('@')) return raw;
+    try {
+      const usersData = mode === 'firebase' && db
+        ? (await db.ref('appData/users').once('value')).val() || {}
+        : (getLocal('appData') || {}).users || {};
+      const found = Object.values(usersData).find(u => normalizeIdentifier(u.username) === normalizeIdentifier(raw) || normalizeIdentifier(u.email) === normalizeIdentifier(raw));
+      if (found && found.email) return found.email;
+    } catch (_) {}
+    return raw;
+  }
+
   const Auth = {
     onChange(callback) {
       if (mode === 'firebase' && auth) return auth.onAuthStateChanged(user => callback(normalizeAuthUser(user)));
@@ -222,10 +244,18 @@
       return localSession();
     },
     async signInEmail(identifier, password) {
-      const login = String(identifier || '').trim();
+      let login = String(identifier || '').trim();
+      login = await resolveEmailForLogin(login);
       if (mode === 'firebase' && auth) {
-        const result = await auth.signInWithEmailAndPassword(login, password);
-        return normalizeAuthUser(result.user);
+        try {
+          const result = await auth.signInWithEmailAndPassword(login, password);
+          return normalizeAuthUser(result.user);
+        } catch (e) {
+          // Se o usuário digitou username, já resolvemos para email. Se falhar, tenta mensagem amigável
+          if (e && e.code === 'auth/user-not-found') throw new Error('Email/usuário ou senha inválidos.');
+          if (e && e.code === 'auth/wrong-password') throw new Error('Email/usuário ou senha inválidos.');
+          throw e;
+        }
       }
       const data = getLocal('appData') || {};
       const users = data.users || {};
@@ -255,9 +285,17 @@
       const cleanEmail = String(email || '').trim().toLowerCase();
       const cleanUsername = String(username || '').trim();
       if (mode === 'firebase' && auth) {
-        const result = await auth.createUserWithEmailAndPassword(cleanEmail, password);
-        if (result.user && name) await result.user.updateProfile({ displayName: name });
-        return normalizeAuthUser(result.user);
+        try {
+          const result = await auth.createUserWithEmailAndPassword(cleanEmail, password);
+          if (result.user && name) await result.user.updateProfile({ displayName: name });
+          return normalizeAuthUser(result.user);
+        } catch (e) {
+          if (e && e.code === 'auth/email-already-in-use') {
+            // Se já existe conta Google com mesmo email, tenta vincular automaticamente solicitando login Google
+            throw new Error('Este email já está cadastrado. Tente entrar com Google usando o mesmo email para vincular as contas.');
+          }
+          throw e;
+        }
       }
       const data = getLocal('appData') || {};
       const users = data.users || {};
@@ -288,18 +326,52 @@
     async signInGoogle() {
       if (mode === 'firebase' && auth) {
         const provider = new window.firebase.auth.GoogleAuthProvider();
-        const result = await auth.signInWithPopup(provider);
-        return normalizeAuthUser(result.user);
+        try {
+          const result = await auth.signInWithPopup(provider);
+          return normalizeAuthUser(result.user);
+        } catch (error) {
+          // Fluxo padrão Firebase para conta existente com outro provedor (email/senha) mesmo email
+          if (error && error.code === 'auth/account-exists-with-different-credential' && error.email) {
+            const email = error.email;
+            const pendingCred = error.credential;
+            try {
+              const methods = await auth.fetchSignInMethodsForEmail(email);
+              if (methods && methods.includes('password')) {
+                // Pede senha para vincular contas (experiência integrada)
+                const pwd = window.prompt(`Este email (${email}) já tem cadastro com senha. Digite a senha para vincular sua conta Google à mesma conta e continuar como admin/membro existente:`);
+                if (!pwd) throw new Error('Vinculação cancelada. Use sua senha para entrar, ou crie outra conta Google.');
+                const emailResult = await auth.signInWithEmailAndPassword(email, pwd);
+                if (emailResult.user && pendingCred) {
+                  try { await emailResult.user.linkWithCredential(pendingCred); } catch (linkErr) { console.warn('Link credential failed', linkErr); }
+                }
+                return normalizeAuthUser(emailResult.user);
+              }
+              // Se não for password, tenta login direto via Google se já houver método Google (caso raro)
+              throw error;
+            } catch (inner) {
+              if (inner && inner.code && inner.code.startsWith('auth/')) throw inner;
+              throw error;
+            }
+          }
+          throw error;
+        }
       }
+      // Modo local/demo: tenta reutilizar conta existente com mesmo email Google demo ou com email já cadastrado
       const data = getLocal('appData') || {};
       const users = data.users || {};
+      // Tenta encontrar perfil existente pelo email de demonstração ou por qualquer email já usado como Google
       let profile = Object.values(users).find(u => u.providerId === 'google-local');
+      // Se existir admin ou qualquer usuário com mesmo email do Google demo, prioriza esse para demonstrar vinculação
+      const demoEmail = 'google.demo@imperialbatista.local';
+      const byDemoEmail = findUserByEmail(users, demoEmail);
+      if (byDemoEmail) profile = byDemoEmail;
+      // Se já temos perfil salvo, usa. Senão cria novo mas tenta vincular por email se possível
       if (!profile) {
         const uid = 'google_local';
         profile = {
           id: uid,
           name: 'Visitante Google',
-          email: 'google.demo@imperialbatista.local',
+          email: demoEmail,
           role: 'membro',
           providerId: 'google-local',
           avatarKey: 'cross',

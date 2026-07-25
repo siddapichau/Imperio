@@ -11,10 +11,13 @@
 </head>
 <body class="admin-body">
   <header class="admin-topbar">
-    <a class="brand" href="index.html">
-      <img data-app-logo src="assets/logo.png" alt="Logo">
-      <span><strong>Admin Imperial Batista</strong><small>Painel editável do aplicativo</small></span>
-    </a>
+    <div class="row gap">
+      <button class="icon-button mobile-only" id="openAdminDrawer" aria-label="Abrir menu admin">☰</button>
+      <a class="brand" href="index.html">
+        <img data-app-logo src="assets/logo.png" alt="Logo">
+        <span><strong>Admin Imperial Batista</strong><small>Painel editável do aplicativo</small></span>
+      </a>
+    </div>
     <div class="top-actions">
       <button class="chip" id="adminPaletteToggle" type="button" title="Trocar cor do painel">🎨</button>
       <button class="chip" id="adminThemeToggle" type="button" title="Alternar claro/escuro">🌙</button>
@@ -23,6 +26,25 @@
     </div>
   </header>
 
+  <aside class="drawer" id="adminDrawer" aria-hidden="true">
+    <div class="drawer-backdrop" id="adminDrawerBackdrop"></div>
+    <div class="drawer-panel" role="dialog" aria-label="Menu admin">
+      <div class="drawer-head">
+        <img data-app-logo src="assets/logo.png" alt="">
+        <div>
+          <strong>Menu Admin</strong>
+          <small>Imperio - gestão</small>
+        </div>
+        <button class="icon-button" id="closeAdminDrawer" aria-label="Fechar menu">×</button>
+      </div>
+      <nav id="adminMobileNav" class="mobile-nav"></nav>
+      <div class="row gap wrap" style="margin-top:auto">
+        <a class="chip" href="index.html">🏠 Ver app</a>
+        <button class="chip" id="adminMobileLogout" type="button">🚪 Sair</button>
+      </div>
+    </div>
+  </aside>
+
   <main id="adminRoot" class="admin-layout"></main>
 
   <dialog class="modal" id="adminAuthModal">
@@ -30,7 +52,7 @@
       <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
       <img data-app-logo src="assets/logo.png" alt="" class="modal-logo">
       <h2>Entrar como liderança</h2>
-      <p class="muted">Somente pastor/admin acessa tudo. Líderes e editores podem ter permissões por cargo.</p>
+      <p class="muted">Somente pastor/admin acessa tudo. Se seu email já é admin, entre com Google usando o mesmo email para vincular.</p>
       <label>Email ou usuário <input id="adminAuthIdentifier" type="text" placeholder="email ou usuário" autocomplete="username" required></label>
       <label>Senha
         <span class="password-field">
@@ -39,7 +61,8 @@
         </span>
       </label>
       <button class="btn primary" type="submit">Entrar</button>
-      <button class="btn google" id="adminGoogleLogin" type="button">Entrar com Google</button>
+      <button class="btn google" id="adminGoogleLogin" type="button">Entrar com Google (mesmo email = mesma conta)</button>
+      <p class="help-text">Login por Google vincula automaticamente se o email já existir como admin/membro.</p>
     </form>
   </dialog>
 

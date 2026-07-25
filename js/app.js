@@ -117,16 +117,35 @@
   function closeDrawer() { drawer.setAttribute('aria-hidden', 'true'); }
 
   function applyAuthMode() {
-    document.querySelectorAll('.register-only').forEach(el => { el.hidden = !registering; });
-    document.querySelectorAll('.login-only').forEach(el => { el.hidden = registering; });
+    // Garante que login mostre APENAS email/usuário + senha, cadastro mostra campos extras
+    document.querySelectorAll('.register-only').forEach(el => {
+      el.hidden = !registering;
+      // Fallback para navegadores que não respeitam hidden em flex
+      el.style.display = registering ? '' : 'none';
+    });
+    document.querySelectorAll('.login-only').forEach(el => {
+      el.hidden = registering;
+      el.style.display = registering ? 'none' : '';
+    });
+    const title = document.querySelector('#authModal h2');
+    if (title) title.textContent = registering ? 'Criar conta' : 'Entrar no aplicativo';
+    const desc = document.querySelector('#authModal .auth-desc');
+    if (desc) desc.textContent = registering ? 'Crie sua conta para participar da igreja no app.' : 'Acesse seu perfil, presença, células, quizzes, devocionais e pedidos de oração.';
     registerToggle.textContent = registering ? 'Já tenho conta' : 'Criar conta';
-    document.getElementById('emailLogin').textContent = registering ? 'Cadastrar' : 'Entrar';
-    document.getElementById('authIdentifier').required = !registering;
-    document.getElementById('authName').required = registering;
-    document.getElementById('authUsername').required = registering;
-    document.getElementById('authEmail').required = registering;
-    document.getElementById('authConfirmPassword').required = registering;
-    document.getElementById('authPassword').autocomplete = registering ? 'new-password' : 'current-password';
+    const submitBtn = document.getElementById('emailLogin');
+    if (submitBtn) submitBtn.textContent = registering ? 'Cadastrar' : 'Entrar';
+    const idInput = document.getElementById('authIdentifier');
+    if (idInput) idInput.required = !registering;
+    const nameInput = document.getElementById('authName');
+    if (nameInput) nameInput.required = registering;
+    const userInput = document.getElementById('authUsername');
+    if (userInput) userInput.required = registering;
+    const emailInput = document.getElementById('authEmail');
+    if (emailInput) emailInput.required = registering;
+    const confirmInput = document.getElementById('authConfirmPassword');
+    if (confirmInput) confirmInput.required = registering;
+    const pwd = document.getElementById('authPassword');
+    if (pwd) pwd.autocomplete = registering ? 'new-password' : 'current-password';
   }
 
   function restoreRememberedUser() {
