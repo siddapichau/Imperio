@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#123b2a">
+  <title>Admin — Igreja Imperial Batista</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin-body">
+  <header class="admin-topbar">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.png" alt="Logo">
+      <span><strong>Admin Imperial Batista</strong><small>Painel editável do aplicativo</small></span>
+    </a>
+    <div class="top-actions">
+      <button class="chip" id="adminThemeToggle" type="button">🌙</button>
+      <a class="chip" href="index.html">Ver app</a>
+      <button class="profile-chip" id="adminLoginOpen" type="button">Entrar</button>
+    </div>
+  </header>
+
+  <main id="adminRoot" class="admin-layout"></main>
+
+  <dialog class="modal" id="adminAuthModal">
+    <form method="dialog" class="modal-card" id="adminAuthForm">
+      <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
+      <img src="assets/logo.png" alt="" class="modal-logo">
+      <h2>Entrar como liderança</h2>
+      <p class="muted">Somente pastor/admin acessa tudo. Líderes e editores podem ter permissões por cargo.</p>
+      <label>Email <input id="adminAuthEmail" type="email" value="pastor@imperialbatista.local" required></label>
+      <label>Senha <input id="adminAuthPassword" type="password" value="imperio123" required></label>
+      <button class="btn primary" type="submit">Entrar</button>
+      <button class="btn google" id="adminGoogleLogin" type="button">Entrar com Google</button>
+    </form>
+  </dialog>
+
+  <dialog id="jsonDialog" class="modal"></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

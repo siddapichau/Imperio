@@ -1,0 +1,8 @@
+{
+  "appId": "br.com.imperialbatista.app",
+  "appName": "Igreja Imperial Batista",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  }
+}
