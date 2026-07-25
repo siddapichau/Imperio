@@ -28,6 +28,18 @@
     return `<span class="status ${status || 'approved'}">${map[status] || status || 'Aprovado'}</span>`;
   }
 
+  function shareButtons(e, payload) {
+    const title = e(payload.title || 'Igreja Imperial Batista');
+    const text = e(payload.text || 'Conheça o app da Igreja Imperial Batista.');
+    const url = e(payload.url || app.pageUrl('home'));
+    return `<div class="share-grid" aria-label="Compartilhar">
+      <button class="btn small" type="button" data-share="whatsapp" data-share-title="${title}" data-share-text="${text}" data-share-url="${url}">WhatsApp</button>
+      <button class="btn small" type="button" data-share="facebook" data-share-title="${title}" data-share-text="${text}" data-share-url="${url}">Facebook</button>
+      <button class="btn small" type="button" data-share="instagram" data-share-title="${title}" data-share-text="${text}" data-share-url="${url}">Instagram</button>
+      <button class="btn small primary" type="button" data-share="native" data-share-title="${title}" data-share-text="${text}" data-share-url="${url}">Compartilhar</button>
+    </div>`;
+  }
+
   function renderHome(ctx) {
     const { e, root, settings, list } = ctx;
     const s = settings();
@@ -70,6 +82,21 @@
             <div class="grid">${events.map(ev => `<div class="card compact"><h3>${e(ev.title)}</h3><p>${e(ev.description || '')}</p><p class="muted">📍 ${e(ev.location || '')} • ${e(app.formatDateTime(ev.startsAt))}</p></div>`).join('') || '<div class="empty">Sem eventos.</div>'}</div>
           </div>
         </section>
+
+        <section class="section grid two">
+          <div class="card devotional-quote">
+            <span class="badge">📖 Versículo do dia</span>
+            <h2>${e(app.verseOfDay().reference)}</h2>
+            <blockquote>${e(app.verseOfDay().text)}</blockquote>
+            <div class="row gap wrap"><button class="btn primary" data-nav="versiculo">Ler e compartilhar</button><button class="btn ghost" data-nav="palavra">Palavra por sentimento</button></div>
+          </div>
+          <div class="card">
+            <span class="badge">🔔 PWA/APK</span>
+            <h2>Receba avisos da igreja</h2>
+            <p class="muted">Ative notificações para agenda, atividades, cultos e avisos importantes direto no app instalado.</p>
+            <button class="btn accent" data-notify="1" type="button">Ativar notificações</button>
+          </div>
+        </section>
       </div>`;
   }
 
@@ -84,6 +111,25 @@
     const events = visible(list('events')).sort(app.byDateAsc);
     const commemorations = list('commemorations').sort(app.byDateAsc);
     root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">📅 Agenda</span><h1>Datas, eventos e celebrações</h1><p>Planeje sua participação nos cultos, atividades, ceias, encontros e datas comemorativas.</p></section><section class="section grid two"><div><div class="section-head"><h2>Eventos</h2></div><div class="grid">${events.map(ev => `<article class="card"><div class="card-title-line"><h3>${e(ev.title)}</h3><span class="status">${e(ev.category || 'Evento')}</span></div><p>${e(ev.description || '')}</p><p class="muted">${e(app.formatDateTime(ev.startsAt))} • ${e(ev.location || '')}</p></article>`).join('') || '<div class="empty">Agenda vazia.</div>'}</div></div><div><div class="section-head"><h2>Datas comemorativas</h2></div><div class="grid">${commemorations.map(item => `<article class="card compact"><h3>${e(item.title)}</h3><p>${e(item.description || '')}</p><p class="muted">${e(app.formatDate(item.date))}</p></article>`).join('') || '<div class="empty">Sem datas.</div>'}</div></div></section></div>`;
+  }
+
+  function renderVersiculo(ctx) {
+    const { e, root, list } = ctx;
+    const verse = app.verseOfDay();
+    const verses = visible(list('devotionalVerses'));
+    const title = `Versículo do dia — ${verse.reference || 'Igreja Imperial Batista'}`;
+    const shareText = `“${verse.text || ''}” (${verse.reference || ''})`;
+    root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">📖 Versículo do dia</span><h1>${e(verse.reference || 'Palavra de Deus')}</h1><p>${e(verse.theme || 'Devocional diário')}</p></section><section class="section grid two"><article class="card devotional-quote highlight"><span class="badge">${e(verse.theme || 'Devocional')}</span><blockquote>${e(verse.text || '')}</blockquote><p class="muted">${e(verse.reference || '')}</p>${shareButtons(e, { title, text: shareText, url: app.pageUrl('versiculo') })}</article><article class="card"><h2>Compartilhe esperança</h2><p class="muted">Envie o versículo para WhatsApp, Facebook, Instagram ou use o compartilhamento nativo do celular.</p><button class="btn primary" data-nav="palavra">Receber palavra por sentimento</button></article></section><section class="section"><div class="section-head"><div><h2>Outros versículos</h2><p class="muted">Lista editável pelo painel administrativo.</p></div></div><div class="grid three">${verses.map(item => `<article class="card compact"><span class="badge">${e(item.theme || 'Versículo')}</span><h3>${e(item.reference)}</h3><p>${e(item.text)}</p></article>`).join('') || '<div class="empty">Nenhum versículo cadastrado.</div>'}</div></section></div>`;
+  }
+
+  function renderPalavra(ctx) {
+    const { e, root, list, user } = ctx;
+    const words = visible(list('feelingWords'));
+    const me = user();
+    root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">🙏 Palavra por sentimento</span><h1>Receba cuidado pela Palavra</h1><p>Escolha uma mensagem pastoral conforme seu momento e envie pedidos de oração para a liderança.</p></section><section class="section"><div class="section-head"><div><h2>Como você está hoje?</h2><p class="muted">Mensagens devocionais editáveis no painel administrativo.</p></div></div><div class="grid three">${words.map(word => {
+      const shareText = `${word.title || word.feeling}: ${word.text || ''} ${word.verse ? '(' + word.verse + ')' : ''}`;
+      return `<article class="card feeling-card"><div class="icon-bubble">${e(word.icon || '🙏')}</div><span class="badge">${e(word.feeling || 'Sentimento')}</span><h2>${e(word.title || '')}</h2><p>${e(word.text || '')}</p><p class="muted">📖 ${e(word.verse || '')}<br>🙏 ${e(word.prayer || '')}</p>${shareButtons(e, { title: word.title || 'Palavra da Igreja Imperial Batista', text: shareText, url: app.pageUrl('palavra') })}</article>`;
+    }).join('') || '<div class="empty">Nenhuma palavra cadastrada.</div>'}</div></section><section class="section card"><div class="section-head"><div><h2>Pedido de oração</h2><p class="muted">Compartilhe seu pedido. A liderança poderá acompanhar pelo painel administrativo.</p></div></div><form id="prayerForm" class="form-grid"><label>Nome<input name="authorName" value="${e(me ? me.name : '')}" placeholder="Seu nome ou anônimo"></label><label>Contato opcional<input name="contact" value="${e(me ? (me.whatsapp || me.email || '') : '')}" placeholder="WhatsApp ou email"></label><label>Sentimento<select name="feeling"><option value="">Escolha...</option>${words.map(word => `<option value="${e(word.feeling || word.id)}">${e(word.icon || '🙏')} ${e(word.feeling || word.id)}</option>`).join('')}</select></label><label class="full">Pedido<textarea name="text" required placeholder="Escreva seu pedido de oração..."></textarea></label><div class="full"><button class="btn primary" type="submit">Enviar pedido de oração</button></div></form></section></div>`;
   }
 
   function renderAtividades(ctx) {
@@ -141,7 +187,7 @@
     root.innerHTML = `<div class="page-container"><div class="section-head"><div><h1>Quizzes bíblicos</h1><p class="muted">Pastores e líderes podem criar quizzes para cultos e células.</p></div></div><div class="grid two">${quizzes.map(q => `<article class="card quiz-card" data-quiz="${e(q.id)}"><div class="card-title-line"><h2>${e(q.title)}</h2><span class="status">${e(q.scope || 'geral')}</span></div><p class="muted">${(q.questions || []).length} perguntas</p><div class="quiz-content">${(q.questions || []).map((question, qi) => `<div class="section"><h3>${qi + 1}. ${e(question.text)}</h3><div class="grid">${(question.options || []).map((opt, oi) => `<button class="btn quiz-option" type="button" data-quiz-option="${qi}" data-value="${oi}">${e(opt)}</button>`).join('')}</div></div>`).join('')}</div><button class="btn primary" data-submit-quiz="${e(q.id)}">Enviar respostas</button></article>`).join('') || '<div class="empty">Nenhum quiz ativo.</div>'}</div></div>`;
   }
 
-  const renderers = { home: renderHome, cultos: renderCultos, agenda: renderAgenda, atividades: renderAtividades, celula: renderCelula, membros: renderMembros, perfil: renderPerfil, postar: renderPostar, quiz: renderQuiz };
+  const renderers = { home: renderHome, cultos: renderCultos, agenda: renderAgenda, versiculo: renderVersiculo, palavra: renderPalavra, atividades: renderAtividades, celula: renderCelula, membros: renderMembros, perfil: renderPerfil, postar: renderPostar, quiz: renderQuiz };
 
   function bindCommon(ctx, page) {
     const { doc, root } = ctx;
@@ -149,6 +195,11 @@
       const nav = event.target.closest('[data-nav]');
       if (nav) return postMessage('navigate', { page: nav.dataset.nav });
       if (event.target.closest('[data-login]')) return postMessage('login');
+      if (event.target.closest('[data-notify]')) return app.requestNotifications().then(() => app.checkDueNotifications(true));
+      const share = event.target.closest('[data-share]');
+      if (share) {
+        return app.shareContent({ title: share.dataset.shareTitle, text: share.dataset.shareText, url: share.dataset.shareUrl }, share.dataset.share).catch(error => app.toast(error.message || 'Não foi possível compartilhar.'));
+      }
       if (event.target.closest('[data-logout]')) return app.signOut();
       const presence = event.target.closest('[data-presence]');
       if (presence) {
@@ -192,6 +243,13 @@
       event.preventDefault();
       const values = Object.fromEntries(new FormData(postForm).entries());
       try { await app.submitPost(values); postForm.reset(); } catch (error) { app.toast(error.message); }
+    };
+
+    const prayerForm = doc.getElementById('prayerForm');
+    if (prayerForm) prayerForm.onsubmit = async event => {
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(prayerForm).entries());
+      try { await app.submitPrayerRequest(values); prayerForm.reset(); } catch (error) { app.toast(error.message); }
     };
   }
 

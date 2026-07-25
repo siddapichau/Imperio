@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#123b2a">
+  <meta name="theme-color" content="#6f1025">
   <title>Admin — Igreja Imperial Batista</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -30,8 +30,13 @@
       <img src="assets/logo.png" alt="" class="modal-logo">
       <h2>Entrar como liderança</h2>
       <p class="muted">Somente pastor/admin acessa tudo. Líderes e editores podem ter permissões por cargo.</p>
-      <label>Email <input id="adminAuthEmail" type="email" value="pastor@imperialbatista.local" required></label>
-      <label>Senha <input id="adminAuthPassword" type="password" value="imperio123" required></label>
+      <label>Email ou usuário <input id="adminAuthIdentifier" type="text" value="wesleystudio@gmail.com" autocomplete="username" required></label>
+      <label>Senha
+        <span class="password-field">
+          <input id="adminAuthPassword" type="password" value="Kimmy2310@" autocomplete="current-password" required>
+          <button class="field-icon" type="button" data-toggle-password="#adminAuthPassword" aria-label="Mostrar senha">👁️</button>
+        </span>
+      </label>
       <button class="btn primary" type="submit">Entrar</button>
       <button class="btn google" id="adminGoogleLogin" type="button">Entrar com Google</button>
     </form>

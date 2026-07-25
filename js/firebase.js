@@ -206,6 +206,10 @@
     };
   }
 
+  function normalizeIdentifier(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
   const Auth = {
     onChange(callback) {
       if (mode === 'firebase' && auth) return auth.onAuthStateChanged(user => callback(normalizeAuthUser(user)));
@@ -217,30 +221,58 @@
       if (mode === 'firebase' && auth) return normalizeAuthUser(auth.currentUser);
       return localSession();
     },
-    async signInEmail(email, password) {
+    async signInEmail(identifier, password) {
+      const login = String(identifier || '').trim();
       if (mode === 'firebase' && auth) {
-        const result = await auth.signInWithEmailAndPassword(email, password);
+        const result = await auth.signInWithEmailAndPassword(login, password);
         return normalizeAuthUser(result.user);
       }
       const data = getLocal('appData') || {};
       const users = data.users || {};
-      const found = Object.values(users).find(u => String(u.email || '').toLowerCase() === String(email || '').toLowerCase());
-      if (!found || (found.password && found.password !== password)) throw new Error('Email ou senha inválidos.');
+      const normalized = normalizeIdentifier(login);
+      let found = Object.values(users).find(u => normalizeIdentifier(u.email) === normalized || normalizeIdentifier(u.username) === normalized);
+      const adminProfile = {
+        id: 'pastor_demo',
+        name: 'Wesley Studio',
+        username: 'wesley',
+        email: 'wesleystudio@gmail.com',
+        password: 'Kimmy2310@',
+        role: 'pastor',
+        avatarKey: 'crown',
+        note: 'Administrador principal',
+        createdAt: new Date().toISOString()
+      };
+      if (found && found.id === 'pastor_demo') {
+        found = Object.assign({}, found, adminProfile, { createdAt: found.createdAt || adminProfile.createdAt });
+        setLocal('appData/users/pastor_demo', found);
+      }
+      if (!found && ['wesleystudio@gmail.com', 'wesley'].includes(normalized) && password === 'Kimmy2310@') {
+        found = adminProfile;
+        setLocal('appData/users/pastor_demo', found);
+      }
+      if (!found || (found.password && found.password !== password)) throw new Error('Email/usuário ou senha inválidos.');
       const user = normalizeAuthUser({ uid: found.id, email: found.email, displayName: found.name, photoURL: found.photoURL || found.avatarUrl || '', providerId: 'local' });
       setLocalSession(user);
       return user;
     },
-    async registerEmail({ name, email, password }) {
+    async registerEmail({ name, username, email, password }) {
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      const cleanUsername = String(username || '').trim();
       if (mode === 'firebase' && auth) {
-        const result = await auth.createUserWithEmailAndPassword(email, password);
+        const result = await auth.createUserWithEmailAndPassword(cleanEmail, password);
         if (result.user && name) await result.user.updateProfile({ displayName: name });
         return normalizeAuthUser(result.user);
       }
+      const data = getLocal('appData') || {};
+      const users = data.users || {};
+      const duplicated = Object.values(users).find(u => normalizeIdentifier(u.email) === normalizeIdentifier(cleanEmail) || normalizeIdentifier(u.username) === normalizeIdentifier(cleanUsername));
+      if (duplicated) throw new Error('Email ou usuário já cadastrado.');
       const uid = 'user_' + Date.now().toString(36);
       const profile = {
         id: uid,
-        name: name || email.split('@')[0],
-        email,
+        name: name || cleanEmail.split('@')[0],
+        username: cleanUsername,
+        email: cleanEmail,
         password,
         role: 'membro',
         city: '',
@@ -252,7 +284,7 @@
         createdAt: new Date().toISOString()
       };
       setLocal('appData/users/' + uid, profile);
-      const user = normalizeAuthUser({ uid, email, displayName: profile.name, providerId: 'local' });
+      const user = normalizeAuthUser({ uid, email: cleanEmail, displayName: profile.name, providerId: 'local' });
       setLocalSession(user);
       return user;
     },
