@@ -17,6 +17,7 @@
     ['celulas', '🏡 Células'],
     ['usuarios', '👥 Usuários'],
     ['posts', '✅ Aprovação'],
+    ['devocionais', '🙏 Devocionais'],
     ['quizzes', '🧠 Quizzes'],
     ['json', '🧩 JSON'],
     ['firebase', '🔥 Firebase']
@@ -28,6 +29,9 @@
     services: { title: 'Novo culto', type: 'Culto', weekday: 'Domingo', time: '19:00', date: '', location: 'Templo', preacher: '', theme: '', visible: true },
     events: { title: 'Novo evento', description: '', startsAt: new Date().toISOString(), endsAt: '', location: '', category: 'Evento', visible: true },
     activities: { title: 'Nova atividade', description: '', leader: '', schedule: '', visible: true },
+    devotionalVerses: { reference: 'João 3:16', text: 'Porque Deus amou ao mundo de tal maneira...', theme: 'Evangelho', visible: true },
+    feelingWords: { feeling: 'Esperança', icon: '🌅', title: 'Palavra de esperança', verse: 'Romanos 15:13', text: 'Mensagem pastoral para este sentimento.', prayer: 'Senhor, renova minha esperança.' },
+    prayerRequests: { authorName: 'Membro', feeling: 'Oração', text: 'Pedido de oração', contact: '', status: 'pending', createdAt: new Date().toISOString() },
     cells: { name: 'Nova célula', leaderId: '', leaderName: '', weekday: 'Terça-feira', time: '20:00', address: '', neighborhood: '', description: '', visible: true },
     quizzes: { title: 'Novo quiz', scope: 'culto', targetId: '', active: true, createdAt: new Date().toISOString(), questions: [{ text: 'Pergunta', options: ['Opção A', 'Opção B', 'Opção C', 'Opção D'], answer: 0 }] },
     commemorations: { title: 'Nova data', date: new Date().toISOString().slice(0, 10), description: '' }
@@ -44,14 +48,16 @@
       loginBtn.onclick = () => authModal.showModal();
       return;
     }
-    loginBtn.innerHTML = `${e(app.avatarFor(user))} ${e(user.name || 'Perfil')}`;
+    const avatar = app.avatarFor(user);
+    const avatarHtml = /^https?:|^data:/i.test(avatar) ? `<img src="${e(avatar)}" alt="" class="avatar-sm">` : e(avatar);
+    loginBtn.innerHTML = `${avatarHtml} ${e(user.name || 'Perfil')}`;
     loginBtn.onclick = () => { if (confirm('Deseja sair?')) app.signOut(); };
   }
 
   function guard() {
     const user = app.state.user;
     if (!user) {
-      root.innerHTML = `<section class="admin-hero"><div class="hero"><span class="badge">Admin</span><h1>Painel administrativo da igreja</h1><p>Entre para editar menu, cores, notícias, cultos, agenda, células, usuários, posts, presença e quizzes.</p><div class="hero-actions"><button class="btn accent" id="openAdminLogin">Entrar como pastor</button><a class="btn ghost" href="index.html">Ver aplicativo</a></div></div><div class="card"><h2>Acesso demo local</h2><p class="muted">Email: pastor@imperialbatista.local<br>Senha: imperio123</p><p>Para produção, configure o Firebase Auth e regras de segurança.</p></div></section>`;
+      root.innerHTML = `<section class="admin-hero"><div class="hero"><span class="badge">Admin</span><h1>Painel administrativo da igreja</h1><p>Entre para editar menu, cores, notícias, cultos, agenda, células, usuários, posts, presença e quizzes.</p><div class="hero-actions"><button class="btn accent" id="openAdminLogin">Entrar como pastor</button><a class="btn ghost" href="index.html">Ver aplicativo</a></div></div><div class="card"><h2>Acesso demo local</h2><p class="muted">Email/usuário: wesleystudio@gmail.com ou wesley<br>Senha: Kimmy2310@</p><p>Para produção, configure o Firebase Auth e regras de segurança.</p></div></section>`;
       document.getElementById('openAdminLogin').onclick = () => authModal.showModal();
       return false;
     }
@@ -84,7 +90,7 @@
   function geral() {
     const s = app.getAt('settings', {});
     const menus = list('settings/menus').sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
-    return `<div class="grid two"><section class="card"><h2>Identidade e cores</h2><form id="settingsForm" class="form-grid"><label>Nome do app<input name="appName" value="${e(s.appName || '')}"></label><label>Nome da igreja<input name="churchName" value="${e(s.churchName || '')}"></label><label>Slogan<input name="slogan" value="${e(s.slogan || '')}"></label><label>Logo/Favicon path<input name="logoPath" value="${e(s.logoPath || 'assets/logo.png')}"></label><label class="full">Título da home<input name="welcomeTitle" value="${e(s.welcomeTitle || '')}"></label><label class="full">Texto da home<textarea name="welcomeText">${e(s.welcomeText || '')}</textarea></label><label>Cor primária<input name="primary" type="color" value="${e((s.theme && s.theme.primary) || '#123b2a')}"></label><label>Cor secundária<input name="primary2" type="color" value="${e((s.theme && s.theme.primary2) || '#1f6a49')}"></label><label>Cor destaque<input name="accent" type="color" value="${e((s.theme && s.theme.accent) || '#d4a33a')}"></label><label>WhatsApp<input name="whatsapp" value="${e(s.whatsapp || '')}"></label><label>Telefone<input name="phone" value="${e(s.phone || '')}"></label><label>Email<input name="email" value="${e(s.email || '')}"></label><label class="full">Endereço<input name="address" value="${e(s.address || '')}"></label><div class="full"><button class="btn primary" type="submit">Salvar configurações</button></div></form></section><section class="card"><div class="section-head"><h2>Menu do aplicativo</h2><button class="btn small" data-add-menu="1">Adicionar menu</button></div><div class="table-wrap"><table><thead><tr><th>Ordem</th><th>Ícone</th><th>Label</th><th>Página</th><th>Visível</th><th>Ações</th></tr></thead><tbody>${menus.map(m => `<tr><td>${e(m.order || '')}</td><td>${e(m.icon || '')}</td><td>${e(m.label)}</td><td>${e(m.page)}</td><td>${m.visible !== false ? 'Sim' : 'Não'}</td><td><button class="btn small" data-edit-path="settings/menus/${e(m.id)}">Editar</button> <button class="btn small danger" data-delete-path="settings/menus/${e(m.id)}">Excluir</button></td></tr>`).join('')}</tbody></table></div></section></div>`;
+    return `<div class="grid two"><section class="card"><h2>Identidade e cores</h2><form id="settingsForm" class="form-grid"><label>Nome do app<input name="appName" value="${e(s.appName || '')}"></label><label>Nome da igreja<input name="churchName" value="${e(s.churchName || '')}"></label><label>Slogan<input name="slogan" value="${e(s.slogan || '')}"></label><label>Logo/Favicon path<input name="logoPath" value="${e(s.logoPath || 'assets/logo.png')}"></label><label class="full">Título da home<input name="welcomeTitle" value="${e(s.welcomeTitle || '')}"></label><label class="full">Texto da home<textarea name="welcomeText">${e(s.welcomeText || '')}</textarea></label><label>Cor primária<input name="primary" type="color" value="${e((s.theme && s.theme.primary) || '#6f1025')}"></label><label>Cor secundária<input name="primary2" type="color" value="${e((s.theme && s.theme.primary2) || '#a61e3a')}"></label><label>Cor destaque<input name="accent" type="color" value="${e((s.theme && s.theme.accent) || '#f2c166')}"></label><label>WhatsApp<input name="whatsapp" value="${e(s.whatsapp || '')}"></label><label>Telefone<input name="phone" value="${e(s.phone || '')}"></label><label>Email<input name="email" value="${e(s.email || '')}"></label><label class="full">Endereço<input name="address" value="${e(s.address || '')}"></label><div class="full"><button class="btn primary" type="submit">Salvar configurações</button></div></form></section><section class="card"><div class="section-head"><h2>Menu do aplicativo</h2><button class="btn small" data-add-menu="1">Adicionar menu</button></div><div class="table-wrap"><table><thead><tr><th>Ordem</th><th>Ícone</th><th>Label</th><th>Página</th><th>Visível</th><th>Ações</th></tr></thead><tbody>${menus.map(m => `<tr><td>${e(m.order || '')}</td><td>${e(m.icon || '')}</td><td>${e(m.label)}</td><td>${e(m.page)}</td><td>${m.visible !== false ? 'Sim' : 'Não'}</td><td><button class="btn small" data-edit-path="settings/menus/${e(m.id)}">Editar</button> <button class="btn small danger" data-delete-path="settings/menus/${e(m.id)}">Excluir</button></td></tr>`).join('')}</tbody></table></div></section></div>`;
   }
 
   function collectionSection(title, path, description) {
@@ -121,6 +127,10 @@
     return `<section class="card"><h2>Aprovação de posts</h2><p class="muted">Membros podem postar; líderes ou pastor aprovam ou recusam.</p><div class="grid two section">${posts.map(p => `<article class="card ${p.status === 'pending' ? 'highlight' : ''}"><div class="card-title-line"><h3>${e(p.title)}</h3>${statusText(p.status || 'pending')}</div><p>${e(p.content)}</p><p class="muted">${e(p.category || 'Geral')} • ${e(p.authorName || '')} • ${e(app.formatDate(p.createdAt))}</p><div class="row gap wrap"><button class="btn small primary" data-approve-post="${e(p.id)}">Aprovar</button><button class="btn small danger" data-reject-post="${e(p.id)}">Recusar</button><button class="btn small" data-edit-path="posts/${e(p.id)}">Editar</button><button class="btn small danger" data-delete-path="posts/${e(p.id)}">Excluir</button></div></article>`).join('') || '<div class="empty">Nenhum post.</div>'}</div></section>`;
   }
 
+  function devocionais() {
+    return `<div class="grid two">${collectionSection('Versículos devocionais', 'devotionalVerses', 'Lista usada para escolher o versículo do dia.')}${collectionSection('Palavra por sentimento', 'feelingWords', 'Mensagens pastorais exibidas na página Palavra.')}${collectionSection('Pedidos de oração', 'prayerRequests', 'Pedidos enviados pelo formulário devocional.')}</div>`;
+  }
+
   function quizzes() {
     return `<div class="grid two">${collectionSection('Quizzes', 'quizzes', 'Perguntas para cultos e células.')}${collectionSection('Resultados', 'quizResults', 'Acertos e histórico por membro.')}</div>`;
   }
@@ -135,7 +145,7 @@
   }
 
   function renderTab() {
-    const map = { dashboard, geral, conteudo, cultos, celulas, usuarios, posts, quizzes, json: jsonEditor, firebase: firebaseTab };
+    const map = { dashboard, geral, conteudo, cultos, celulas, usuarios, posts, devocionais, quizzes, json: jsonEditor, firebase: firebaseTab };
     return (map[activeTab] || dashboard)();
   }
 
@@ -239,10 +249,21 @@
     };
   }
 
+  document.querySelectorAll('[data-toggle-password]').forEach(btn => {
+    btn.onclick = () => {
+      const input = document.querySelector(btn.dataset.togglePassword);
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? '👁️' : '🙈';
+      btn.setAttribute('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha');
+    };
+  });
+
   document.getElementById('adminAuthForm').onsubmit = async event => {
     event.preventDefault();
     try {
-      await app.signInEmail(document.getElementById('adminAuthEmail').value.trim(), document.getElementById('adminAuthPassword').value);
+      await app.signInEmail(document.getElementById('adminAuthIdentifier').value.trim(), document.getElementById('adminAuthPassword').value);
       authModal.close();
     } catch (error) { app.toast(error.message || 'Falha no login.'); }
   };

@@ -1,16 +1,28 @@
 # Igreja Imperial Batista — Imperio
 
-Projeto inicial de um aplicativo/site PWA para Igreja Imperial Batista, pronto para publicar como site estático e empacotar como APK via PWABuilder/Capacitor.
+Aplicativo/site PWA para a Igreja Imperial Batista, pronto para publicar como site estático e empacotar como APK via PWABuilder/Capacitor.
+
+## Recursos incluídos
+
+- Login por **email ou nome de usuário**, com mostrar/ocultar senha e opção de lembrar o usuário neste dispositivo.
+- Cadastro com nome completo, usuário, email, senha confirmada e validação forte.
+- Acesso admin local atualizado: `wesleystudio@gmail.com` ou `wesley` / `Kimmy2310@`.
+- Tema vinho/vermelho, nova logo e favicon.
+- Compartilhamento para WhatsApp, Facebook, Instagram e compartilhamento nativo do dispositivo.
+- Páginas **Versículo** e **Palavra** no menu principal.
+- Versículo do dia, palavra por sentimento e formulário de pedido de oração.
+- Notificações PWA/APK para avisos, agenda e atividades.
+- Avatar do Google preservado quando existir e avatares internos cristãos para perfis locais.
 
 ## Estrutura
 
 - `index.html`: aplicativo público, menu responsivo e páginas embutidas por `iframe`.
-- `admin.html`: painel administrativo para editar menus, cores, notícias, cultos, agenda, células, usuários, posts e quizzes.
-- `pages/`: páginas carregadas dentro do `index.html`.
-- `js/`: núcleo do app, integração Firebase, renderização das páginas e admin.
+- `admin.html`: painel administrativo para editar menus, cores, notícias, cultos, agenda, devocionais, células, usuários, posts e quizzes.
+- `pages/`: páginas carregadas dentro do `index.html`, incluindo `versiculo.html` e `palavra.html`.
+- `js/`: núcleo do app, integração Firebase/localStorage, renderização das páginas e admin.
 - `css/style.css`: tema claro/escuro e responsivo para celular/computador.
 - `assets/`: logo, favicon e ícones do app.
-- `manifest.json` e `service-worker.js`: PWA instalável.
+- `manifest.json` e `service-worker.js`: PWA instalável com cache offline e notificações.
 
 ## Firebase
 
@@ -22,8 +34,8 @@ Para login real por e-mail/Google no Firebase, é necessário preencher a config
 
 ### Acesso demo local
 
-- Pastor/Admin: `pastor@imperialbatista.local`
-- Senha: `imperio123`
+- Pastor/Admin: `wesleystudio@gmail.com` ou usuário `wesley`
+- Senha: `Kimmy2310@`
 
 ## Como abrir
 
@@ -52,8 +64,8 @@ npx cap add android
 npx cap open android
 ```
 
-No Android Studio, gere o APK/AAB. O app já possui `manifest.json`, service worker, ícones e layout responsivo.
+No Android Studio, gere o APK/AAB. O app já possui `manifest.json`, service worker, ícones, notificações e layout responsivo.
 
 ## Observação de segurança
 
-Este projeto inicial é front-end estático. Para produção, configure regras do Firebase Realtime Database para impedir edições indevidas, valide cargos no servidor/Firebase Rules e remova senhas demo.
+Este projeto é front-end estático. Para produção, configure regras do Firebase Realtime Database para impedir edições indevidas, valide cargos no servidor/Firebase Rules e substitua credenciais demo por contas reais no Firebase Auth.

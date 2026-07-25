@@ -13,6 +13,7 @@
   const googleLogin = document.getElementById('googleLogin');
   const themeToggle = document.getElementById('themeToggle');
   const installBtn = document.getElementById('installBtn');
+  const notificationBtn = document.getElementById('notificationBtn');
   let deferredInstall = null;
   let registering = false;
 
@@ -59,7 +60,7 @@
     const user = app.state.user;
     if (!user) {
       loginOpen.innerHTML = 'Entrar';
-      loginOpen.onclick = () => authModal.showModal();
+      loginOpen.onclick = () => openAuth(false);
       return;
     }
     const avatar = app.avatarFor(user);
@@ -71,8 +72,47 @@
     };
   }
 
+  function renderNotificationButton() {
+    if (!notificationBtn) return;
+    const supported = 'Notification' in window;
+    notificationBtn.hidden = !supported;
+    if (!supported) return;
+    notificationBtn.textContent = Notification.permission === 'granted' ? '🔔 Ativas' : '🔔 Avisos';
+    notificationBtn.title = Notification.permission === 'granted' ? 'Notificações ativadas' : 'Ativar notificações de avisos, agenda e atividades';
+  }
+
   function openDrawer() { drawer.setAttribute('aria-hidden', 'false'); }
   function closeDrawer() { drawer.setAttribute('aria-hidden', 'true'); }
+
+  function applyAuthMode() {
+    document.querySelectorAll('.register-only').forEach(el => { el.hidden = !registering; });
+    document.querySelectorAll('.login-only').forEach(el => { el.hidden = registering; });
+    registerToggle.textContent = registering ? 'Já tenho conta' : 'Criar conta';
+    document.getElementById('emailLogin').textContent = registering ? 'Cadastrar' : 'Entrar';
+    document.getElementById('authIdentifier').required = !registering;
+    document.getElementById('authName').required = registering;
+    document.getElementById('authUsername').required = registering;
+    document.getElementById('authEmail').required = registering;
+    document.getElementById('authConfirmPassword').required = registering;
+    document.getElementById('authPassword').autocomplete = registering ? 'new-password' : 'current-password';
+  }
+
+  function restoreRememberedUser() {
+    const remember = localStorage.getItem('imperioRememberUser') === 'true';
+    const identifier = localStorage.getItem('imperioRememberIdentifier') || '';
+    const rememberBox = document.getElementById('rememberUser');
+    const input = document.getElementById('authIdentifier');
+    rememberBox.checked = remember;
+    if (remember && identifier) input.value = identifier;
+  }
+
+  function openAuth(registerMode) {
+    registering = Boolean(registerMode);
+    applyAuthMode();
+    restoreRememberedUser();
+    authModal.showModal();
+    setTimeout(() => document.getElementById(registering ? 'authName' : 'authIdentifier').focus(), 60);
+  }
 
   document.getElementById('openDrawer').onclick = openDrawer;
   document.getElementById('closeDrawer').onclick = closeDrawer;
@@ -81,20 +121,46 @@
 
   registerToggle.onclick = () => {
     registering = !registering;
-    document.querySelectorAll('.register-only').forEach(el => el.hidden = !registering);
-    registerToggle.textContent = registering ? 'Já tenho conta' : 'Criar conta';
-    document.getElementById('emailLogin').textContent = registering ? 'Cadastrar' : 'Entrar';
-    document.getElementById('authName').required = registering;
+    applyAuthMode();
   };
+
+  document.querySelectorAll('[data-toggle-password]').forEach(btn => {
+    btn.onclick = () => {
+      const input = document.querySelector(btn.dataset.togglePassword);
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? '👁️' : '🙈';
+      btn.setAttribute('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha');
+    };
+  });
 
   authForm.onsubmit = async event => {
     event.preventDefault();
-    const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value;
-    const name = document.getElementById('authName').value.trim();
     try {
-      if (registering) await app.registerEmail(name, email, password);
-      else await app.signInEmail(email, password);
+      if (registering) {
+        const details = {
+          name: document.getElementById('authName').value.trim(),
+          username: document.getElementById('authUsername').value.trim(),
+          email: document.getElementById('authEmail').value.trim(),
+          password,
+          confirmPassword: document.getElementById('authConfirmPassword').value
+        };
+        await app.registerEmail(details);
+      } else {
+        const identifier = document.getElementById('authIdentifier').value.trim();
+        await app.signInEmail(identifier, password);
+        if (document.getElementById('rememberUser').checked) {
+          localStorage.setItem('imperioRememberUser', 'true');
+          localStorage.setItem('imperioRememberIdentifier', identifier);
+        } else {
+          localStorage.removeItem('imperioRememberUser');
+          localStorage.removeItem('imperioRememberIdentifier');
+        }
+      }
+      authForm.reset();
+      restoreRememberedUser();
       authModal.close();
     } catch (error) {
       app.toast(error.message || 'Não foi possível entrar.');
@@ -105,11 +171,20 @@
     try { await app.signInGoogle(); authModal.close(); } catch (error) { app.toast(error.message || 'Falha no Google.'); }
   };
 
+  if (notificationBtn) {
+    notificationBtn.onclick = async () => {
+      await app.requestNotifications();
+      renderNotificationButton();
+      await app.checkDueNotifications(true);
+    };
+  }
+
   window.addEventListener('hashchange', () => navigate(currentPage()));
   window.addEventListener('message', event => {
     if (!event.data || event.data.source !== 'imperio-page') return;
     if (event.data.action === 'navigate') navigate(event.data.page);
-    if (event.data.action === 'login') authModal.showModal();
+    if (event.data.action === 'login') openAuth(false);
+    if (event.data.action === 'register') openAuth(true);
   });
 
   window.addEventListener('beforeinstallprompt', event => {
@@ -129,7 +204,13 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
   }
 
-  app.on('data', () => { renderBrand(); renderNav(); renderUser(); });
+  app.on('data', () => {
+    renderBrand();
+    renderNav();
+    renderUser();
+    renderNotificationButton();
+    app.checkDueNotifications(false);
+  });
   app.on('auth', () => { renderNav(); renderUser(); });
   app.on('theme', renderBrand);
 
@@ -137,6 +218,8 @@
     renderBrand();
     renderNav();
     renderUser();
+    renderNotificationButton();
+    applyAuthMode();
     navigate(currentPage());
   });
 })();

@@ -1,13 +1,13 @@
 {
   "name": "Igreja Imperial Batista",
   "short_name": "Imperio Batista",
-  "description": "Aplicativo da Igreja Imperial Batista: cultos, células, presença, agenda, notícias e quizzes.",
+  "description": "Aplicativo da Igreja Imperial Batista: cultos, células, presença, agenda, devocionais, oração, notícias e quizzes.",
   "start_url": "index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f6f4ee",
-  "theme_color": "#123b2a",
+  "background_color": "#fbf3f5",
+  "theme_color": "#6f1025",
   "lang": "pt-BR",
   "categories": ["lifestyle", "education", "productivity"],
   "icons": [
