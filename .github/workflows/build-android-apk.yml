@@ -1,49 +1,4 @@
-ps://github.com/siddapichau/Imperio/pull/7
 
-Importante: o PR subiu com toda a preparação do APK e logo roxa vinho, mas não consegui incluir o workflow do GitHub Actions no PR porque o GitHub bloqueou a permissão workflows.
-
-Eu já deixei aberto para você baixar o arquivo:
-
-.github/workflows/build-android-apk.yml
-
-Para colocar manualmente no GitHub:
-
-Abra o repositório no GitHub.
-Clique em Add file → Create new file.
-No nome do arquivo coloque exatamente:
-txt
-
-.github/workflows/build-android-apk.yml
-Cole o conteúdo do arquivo que eu abri para você baixar.
-Clique em Commit changes direto na main.
-Depois disso, quando você fizer merge do PR, o GitHub Actions vai gerar o APK e ele aparecerá em Actions → Build Android APK → Artifacts com o nome:
-
-txt
-
-Igreja-Imperial-Batista-APK-roxo-vinho
-Se preferir liberar a permissão para eu subir o workflow direto no PR, reconecte o GitHub no Arena com permissão de Workflows/Actions, me avise, e eu adiciono esse arquivo no PR automaticamente.
-
-
-Esta tarefa foi bem-sucedida?
-
-
-Sim
-
-Não
-
-Continuar trabalhando
-Arena | Benchmark & Compare the Best AI Models
-Workspace
-
-Diff
-
-Branch
-unified
-split
-
-
-.github/workflows/build-android-apk.yml
-+64
 name: Build Android APK
 
 on:
