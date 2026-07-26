@@ -11,7 +11,13 @@
   "server": {
     "androidScheme": "https",
     "hostname": "app.imperialbatista.local",
-    "allowNavigation": []
+    "allowNavigation": [
+      "imperio-28408.firebaseapp.com",
+      "imperio-28408.web.app",
+      "*.firebaseapp.com",
+      "*.google.com",
+      "accounts.google.com"
+    ]
   },
   "plugins": {
     "SplashScreen": {
