@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - main
-      - arena/019f9c23-imperio
   workflow_dispatch:
 
 permissions:
@@ -53,13 +52,13 @@ jobs:
       - name: Separar APK para download
         run: |
           mkdir -p artifacts
-          cp android/app/build/outputs/apk/debug/app-debug.apk "artifacts/Igreja-Imperial-Batista-roxo-vinho-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "artifacts/Igreja-Imperial-Batista.apk"
           ls -lh artifacts
 
       - name: Publicar APK nos artifacts do GitHub Actions
         uses: actions/upload-artifact@v4
         with:
-          name: Igreja-Imperial-Batista-APK-roxo-vinho
+          name: Igreja-Imperial-Batista
           path: artifacts/*.apk
           if-no-files-found: error
           retention-days: 30
