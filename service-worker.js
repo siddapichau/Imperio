@@ -1,4 +1,4 @@
-const CACHE_NAME = 'imperio-batista-v5';
+const CACHE_NAME = 'imperio-batista-v6';
 const ASSETS = [
   './', './index.html', './admin.html', './manifest.json', './css/style.css',
   './js/vendor-qrcode.js', './js/security.js', './js/firebase.js', './js/core.js', './js/editor.js', './js/ai.js', './js/pix.js', './js/pages.js', './js/app.js', './js/admin.js', './js/page-bridge.js',
@@ -38,8 +38,8 @@ self.addEventListener('message', event => {
   const data = event.data || {};
   if (data.type !== 'SHOW_NOTIFICATION') return;
   const options = Object.assign({
-    icon: './assets/logo.png',
-    badge: './assets/favicon.png',
+    icon: './assets/logo-roxo.png',
+    badge: './assets/favicon-roxo.png',
     data: { url: './index.html' }
   }, data.options || {});
   event.waitUntil(self.registration.showNotification(data.title || 'Igreja Imperial Batista', options));

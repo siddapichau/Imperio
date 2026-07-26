@@ -6,17 +6,21 @@
   "scripts": {
     "start": "python3 -m http.server 8080",
     "serve": "python3 -m http.server 8080",
-    "cap:init": "npx cap init \"Igreja Imperial Batista\" br.com.imperialbatista.app --web-dir .",
-    "cap:add:android": "npx cap add android",
-    "cap:sync": "npx cap sync android",
-    "cap:icons": "npx @capacitor/assets generate --android --iconBackgroundColor '#6f1025' --iconBackgroundColorDark '#14070c' --splashBackgroundColor '#fbf3f5' --splashBackgroundColorDark '#14070c'",
+    "build:web": "node scripts/prepare-capacitor-web.js",
+    "cap:init": "npx cap init \"Igreja Imperial Batista\" br.com.imperialbatista.app --web-dir www",
+    "cap:add:android": "npm run build:web && npx cap add android",
+    "cap:sync": "npm run build:web && npx cap sync android",
+    "cap:icons": "npx @capacitor/assets generate --android --assetPath resources --iconBackgroundColor '#4b0f43' --iconBackgroundColorDark '#100517' --splashBackgroundColor '#f8f2fa' --splashBackgroundColorDark '#100517'",
     "cap:open:android": "npx cap open android",
-    "android:build": "npm run cap:sync && npm run cap:icons && cd android && ./gradlew assembleRelease"
+    "android:prepare": "npm run build:web && ([ -d android ] || npx cap add android) && npm run cap:icons && npx cap sync android",
+    "android:build": "npm run android:build:debug",
+    "android:build:debug": "npm run android:prepare && cd android && chmod +x ./gradlew && ./gradlew assembleDebug",
+    "android:build:release": "npm run android:prepare && cd android && chmod +x ./gradlew && ./gradlew assembleRelease"
   },
   "devDependencies": {
-    "@capacitor/android": "latest",
-    "@capacitor/assets": "latest",
-    "@capacitor/cli": "latest",
-    "@capacitor/core": "latest"
+    "@capacitor/android": "8.4.2",
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.4.2",
+    "@capacitor/core": "8.4.2"
   }
 }
