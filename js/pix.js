@@ -172,9 +172,19 @@
     return true;
   }
 
+  function parseAmount(amount) {
+    if (typeof amount === 'number') return amount;
+    let text = String(amount || '').trim();
+    // Aceita tanto 10.50 quanto 10,50 e valores colados como R$ 1.234,56.
+    if (text.includes(',') && text.includes('.')) text = text.replace(/\./g, '').replace(',', '.');
+    else text = text.replace(',', '.');
+    text = text.replace(/[^0-9.\-]/g, '');
+    return Number(text);
+  }
+
   function validateAmount(amount) {
     const cfg = config();
-    const value = Number(amount);
+    const value = parseAmount(amount);
     const min = Number(cfg.minAmount || 5);
     const max = Number(cfg.maxAmount || 0);
     if (!Number.isFinite(value) || value <= 0) throw new Error('Informe um valor válido.');
@@ -231,6 +241,11 @@
     return cfg.enabled !== false && Boolean(String(cfg.pixKey || '').trim());
   }
 
+  function mercadoPagoConfigured() {
+    const cfg = config();
+    return cfg.enabled !== false && Boolean(String(cfg.checkoutLink || '').trim());
+  }
+
   window.ImperioPix = {
     config,
     isConfigured,
@@ -238,10 +253,12 @@
     renderQr,
     downloadQr,
     validateAmount,
+    parseAmount,
     formatBRL,
     registerDonation,
     confirmDonation,
     checkoutUrl,
+    mercadoPagoConfigured,
     detectKeyType,
     normalizeKey,
     crc16

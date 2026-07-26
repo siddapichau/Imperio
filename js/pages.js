@@ -29,6 +29,13 @@
     return `<span class="status ${status || 'approved'}">${map[status] || status || 'Aprovado'}</span>`;
   }
 
+  function displaySrc(path) {
+    const value = String(path || '').trim();
+    if (!value) return '';
+    if (/^(https?:|data:|blob:|\/)/i.test(value)) return value;
+    return '../' + value.replace(/^\.\//, '').replace(/^\.\.\//, '');
+  }
+
   /**
    * Botões de compartilhamento. Sempre levam uma imagem junto:
    * a imagem principal do post quando existir, senão a logo do tema ativo.
@@ -44,7 +51,7 @@
     const preview = image || app.logoPath();
     return `<div class="share-block">
       <div class="share-preview" aria-hidden="true">
-        <img src="${e(preview)}" alt="" loading="lazy">
+        <img src="${e(displaySrc(preview))}" alt="" loading="lazy">
         <div><strong>${title}</strong><small>${image ? 'Vai com a imagem do post' : 'Vai com a logo do app'}</small></div>
       </div>
       <div class="share-grid" aria-label="Compartilhar">
@@ -80,6 +87,42 @@
     return editor ? editor.excerpt(item.content || '', size || 180) : String(item.content || '').slice(0, size || 180);
   }
 
+  function setPageBusy(doc, active) {
+    if (doc && doc.body) doc.body.dataset.imperioBusy = active === false ? '' : '1';
+  }
+
+  function digits(value) { return String(value || '').replace(/\D/g, ''); }
+
+  function mediaEmbedUrl(item) {
+    const raw = (item && (item.embed || item.url || item.link)) || '';
+    if (!raw) return '';
+    if (window.ImperioEditor) return window.ImperioEditor.embedUrl(raw) || (/^https:\/\//i.test(raw) ? raw : '');
+    return /^https:\/\//i.test(raw) ? raw : '';
+  }
+
+  function youtubeId(value) {
+    const url = String(value || '');
+    const match = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+    return match ? match[1] : '';
+  }
+
+  function mediaWatchUrl(item) {
+    const raw = (item && (item.embed || item.url || item.link)) || '';
+    const yt = youtubeId(raw);
+    if (yt) return 'https://www.youtube.com/watch?v=' + yt;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return '';
+  }
+
+  function mediaImage(item) {
+    if (!item) return '';
+    if (item.image) return item.image;
+    const raw = item.embed || item.url || item.link || '';
+    const yt = youtubeId(raw);
+    if (yt) return 'https://img.youtube.com/vi/' + yt + '/hqdefault.jpg';
+    return mainImage(item) || app.logoPath();
+  }
+
   function renderHome(ctx) {
     const { e, root, settings, list } = ctx;
     const s = settings();
@@ -87,12 +130,18 @@
     const announcements = visible(list('announcements')).sort(app.byDateDesc).slice(0, 3);
     const events = visible(list('events')).sort(app.byDateAsc).slice(0, 3);
     const services = visible(list('services')).slice(0, 3);
+    const verse = app.verseOfDay();
     root.innerHTML = `
       <div class="page-container">
         <section class="hero">
           <span class="badge">🕊️ ${e(s.slogan || 'Servir, amar e discipular')}</span>
           <h1>${e(s.welcomeTitle || s.churchName)}</h1>
           <p>${e(s.welcomeText || '')}</p>
+          <div class="hero-verse">
+            <strong>📖 Versículo do dia</strong>
+            <span>“${e(verse.text || 'Lâmpada para os meus pés é a tua palavra e luz para o meu caminho.')}”</span>
+            <em>${e(verse.reference || 'Salmos 119:105')}</em>
+          </div>
           <div class="hero-actions">
             <button class="btn accent" data-nav="cultos">Ver próximos cultos</button>
             <button class="btn ghost" data-nav="postar">Enviar testemunho/post</button>
@@ -111,7 +160,7 @@
           <div class="section-head"><div><h2>Notícias da igreja</h2><p class="muted">Palavra, comunhão, avisos e testemunhos aprovados.</p></div><button class="btn small" data-nav="postar">Postar</button></div>
           <div class="grid two">${news.map(n => {
             const image = mainImage(n);
-            return `<article class="card news-card ${n.featured ? 'highlight' : ''}">${image ? `<img class="card-cover" src="${e(image)}" alt="${e(n.title)}" loading="lazy">` : ''}<div class="card-title-line"><h3>${e(n.title)}</h3>${n.featured ? '<span class="badge">Destaque</span>' : ''}</div><p class="muted">${e(app.formatDate(n.date || n.createdAt))} • ${e(n.author || 'Igreja')}</p><p>${e(summaryOf(n))}</p><div class="row gap wrap"><button class="btn small ghost" data-open-item="news:${e(n.id)}">Ler mais</button><button class="btn small ghost" data-share="native" data-share-title="${e(n.title)}" data-share-text="${e(summaryOf(n, 140))}" data-share-url="${e(app.pageUrl('home'))}" data-share-image="${e(image)}">📤</button></div></article>`;
+            return `<article class="card news-card ${n.featured ? 'highlight' : ''}">${image ? `<img class="card-cover" src="${e(displaySrc(image))}" alt="${e(n.title)}" loading="lazy">` : ''}<div class="card-title-line"><h3>${e(n.title)}</h3>${n.featured ? '<span class="badge">Destaque</span>' : ''}</div><p class="muted">${e(app.formatDate(n.date || n.createdAt))} • ${e(n.author || 'Igreja')}</p><p>${e(summaryOf(n))}</p><div class="row gap wrap"><button class="btn small ghost" data-open-item="news:${e(n.id)}">Ler mais</button><button class="btn small ghost" data-share="native" data-share-title="${e(n.title)}" data-share-text="${e(summaryOf(n, 140))}" data-share-url="${e(app.pageUrl('home'))}" data-share-image="${e(image)}">📤</button></div></article>`;
           }).join('') || '<div class="empty">Nenhuma notícia cadastrada.</div>'}</div>
         </section>
 
@@ -129,8 +178,8 @@
         <section class="section grid two">
           <div class="card devotional-quote">
             <span class="badge">📖 Versículo do dia</span>
-            <h2>${e(app.verseOfDay().reference)}</h2>
-            <blockquote>${e(app.verseOfDay().text)}</blockquote>
+            <h2>${e(verse.reference)}</h2>
+            <blockquote>${e(verse.text)}</blockquote>
             <div class="row gap wrap"><button class="btn primary" data-nav="versiculo">Ler e compartilhar</button><button class="btn ghost" data-nav="palavra">Palavra por sentimento</button></div>
           </div>
           <div class="card ai-card">
@@ -274,9 +323,105 @@
       root.innerHTML = `<div class="page-container">${loginCard(e)}<div class="empty section">A lista de membros é liberada para líderes e pastores.</div></div>`;
       return;
     }
-    const users = list('users').sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    const users = list('users').sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     const cells = app.getAt('cells', {});
-    root.innerHTML = `<div class="page-container"><div class="section-head"><div><h1>Membros</h1><p class="muted">Cadastro, contatos, cargos e vínculo com células.</p></div></div><div class="grid three">${users.map(u => `<article class="card"><div class="row gap"><span>${app.avatarMarkup(u)}</span><div><h3>${e(u.name)}</h3><p class="muted">${e(u.email || '')}</p></div></div><p><span class="status">${e(u.role || 'membro')}</span></p><p class="muted">WhatsApp: ${e(u.whatsapp || '-')}<br>Cidade: ${e(u.city || '-')}<br>Célula: ${e(cells[u.cellId] ? cells[u.cellId].name : '-')}</p></article>`).join('')}</div></div>`;
+    const roleNames = { pastor: 'Pastor/Admin', lider: 'Líder', editor: 'Editor', membro: 'Membro' };
+    const roleCounts = users.reduce((acc, u) => {
+      const role = app.normalizeRole(u.role);
+      acc[role] = (acc[role] || 0) + 1;
+      return acc;
+    }, {});
+    const roleChips = [
+      ['', 'Todos', users.length],
+      ['pastor', 'Pastores', roleCounts.pastor || 0],
+      ['lider', 'Líderes', roleCounts.lider || 0],
+      ['editor', 'Editores', roleCounts.editor || 0],
+      ['membro', 'Membros', roleCounts.membro || 0]
+    ];
+
+    const presence = list('presence').filter(item => item.present !== false);
+    const cellPresence = list('cellPresence').filter(item => item.present !== false);
+    const quizResults = list('quizResults');
+    const posts = list('posts');
+    const prayers = list('prayerRequests');
+    const aiVerses = list('aiVerses');
+    const readingProgress = app.getAt('readingProgress', {}) || {};
+
+    function metricsFor(user) {
+      const id = user.id;
+      const cultos = presence.filter(item => item.userId === id).length;
+      const celulas = cellPresence.filter(item => item.userId === id).length;
+      const quizzes = quizResults.filter(item => item.userId === id).length;
+      const userPosts = posts.filter(item => item.authorId === id || item.userId === id).length;
+      const userPrayers = prayers.filter(item => item.userId === id).length;
+      const aiUses = aiVerses.filter(item => item.userId === id).length;
+      const readingDays = Object.values(readingProgress[id] || {}).filter(Boolean).length;
+      // Participação no APK = interações registradas no app (presença, quiz, post, oração, IA e leitura).
+      const appUsage = cultos + celulas + quizzes + userPosts + userPrayers + aiUses + readingDays;
+      const totalPresence = cultos + celulas;
+      return { cultos, celulas, quizzes, userPosts, userPrayers, aiUses, readingDays, appUsage, totalPresence };
+    }
+
+    const metricsByUser = users.reduce((acc, user) => {
+      acc[user.id] = metricsFor(user);
+      return acc;
+    }, {});
+    const maxUsage = Math.max(1, ...users.map(user => metricsByUser[user.id].appUsage));
+    const maxPresence = Math.max(1, ...users.map(user => metricsByUser[user.id].totalPresence));
+    const avgUsagePercent = users.length ? Math.round(users.reduce((sum, user) => sum + (metricsByUser[user.id].appUsage / maxUsage * 100), 0) / users.length) : 0;
+    const avgPresencePercent = users.length ? Math.round(users.reduce((sum, user) => sum + (metricsByUser[user.id].totalPresence / maxPresence * 100), 0) / users.length) : 0;
+
+    root.innerHTML = `<div class="page-container">
+      <div class="section-head"><div><h1>Membros</h1><p class="muted">Lista objetiva: nome, cargo, célula e médias de participação/presença.</p></div><span class="badge">${users.length} cadastro(s)</span></div>
+
+      <section class="section grid two">
+        <div class="card kpi"><div class="icon-bubble">📲</div><div><strong>${e(avgUsagePercent)}%</strong><span>média geral de uso do APK</span></div></div>
+        <div class="card kpi"><div class="icon-bubble">✅</div><div><strong>${e(avgPresencePercent)}%</strong><span>média geral de presença marcada</span></div></div>
+      </section>
+
+      <section class="card member-filter-card section">
+        <div class="filter-row member-role-filters">
+          ${roleChips.map(([role, label, count], index) => `<button class="chip filter-chip ${index === 0 ? 'active' : ''}" type="button" data-member-role="${e(role)}">${e(label)} <small>${e(count)}</small></button>`).join('')}
+        </div>
+        <div class="member-search-grid">
+          <label>Buscar por nome ou célula
+            <input id="memberSearch" inputmode="search" placeholder="Digite nome ou célula...">
+          </label>
+          <label>Filtrar por célula
+            <select id="memberCellFilter"><option value="">Todas as células</option>${app.asArray(cells).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))).map(c => `<option value="${e(c.id)}">${e(c.name)}</option>`).join('')}</select>
+          </label>
+        </div>
+      </section>
+
+      <div class="grid three section" id="memberGrid">${users.map(u => {
+        const role = app.normalizeRole(u.role);
+        const cell = cells[u.cellId] ? cells[u.cellId].name : 'Sem célula';
+        const m = metricsByUser[u.id];
+        const usagePercent = Math.round((m.appUsage / maxUsage) * 100);
+        const presencePercent = Math.round((m.totalPresence / maxPresence) * 100);
+        const haystack = [u.name, cell, roleNames[role], role].join(' ').toLowerCase();
+        return `<article class="card member-card" data-member-role="${e(role)}" data-member-cell="${e(u.cellId || '')}" data-member-search="${e(haystack)}">
+          <div class="member-summary">
+            <h3>${e(u.name || 'Sem nome')}</h3>
+            <span class="status ${role === 'pastor' ? 'approved' : role === 'lider' ? 'pending' : ''}">${e(roleNames[role] || 'Membro')}</span>
+            <p class="muted"><strong>Célula:</strong> ${e(cell)}</p>
+          </div>
+          <div class="member-metrics">
+            <div class="member-metric">
+              <div class="between row"><strong>Uso do APK</strong><span>${e(usagePercent)}%</span></div>
+              <div class="progress-bar"><span style="width:${usagePercent}%"></span></div>
+            </div>
+            <div class="member-metric">
+              <div class="between row"><strong>Presença</strong><span>${e(presencePercent)}%</span></div>
+              <div class="progress-bar"><span style="width:${presencePercent}%"></span></div>
+              <small class="muted">Cultos: ${e(m.cultos)} • Células: ${e(m.celulas)}</small>
+            </div>
+          </div>
+        </article>`;
+      }).join('')}</div>
+      <div id="memberEmpty" class="empty section" hidden>Nenhum membro encontrado com estes filtros.</div>
+      <p class="help-text section">As médias são comparativas entre os membros: quem mais usou o app ou marcou presença vira a referência de 100%.</p>
+    </div>`;
   }
 
   function renderPerfil(ctx) {
@@ -290,6 +435,7 @@
     const roleLabel = roleNames[app.normalizeRole(me.role)] || 'Membro';
     const needsPassword = app.needsPasswordSetup();
     const canAdmin = app.can('admin.access');
+    const googlePhoto = (app.state.authUser && app.state.authUser.photoURL) || me.googlePhotoURL || '';
 
     root.innerHTML = `<div class="page-container">
       <section class="card highlight">
@@ -350,7 +496,21 @@
           <label class="full">Endereço<input name="address" value="${e(me.address || '')}"></label>
           <label>Célula<select name="cellId"><option value="">Sem célula</option>${cells.map(c => `<option value="${e(c.id)}" ${me.cellId === c.id ? 'selected' : ''}>${e(c.name)}</option>`).join('')}</select></label>
           <label>Cargo<input value="${e(roleLabel)}" disabled></label>
-          <div class="full"><h3>Avatar do site</h3><div class="row gap wrap">${avatarButtons}</div><input type="hidden" name="avatarKey" value="${e(me.avatarKey || 'dove')}"></div>
+          <div class="full profile-photo-editor">
+            <h3>Foto de perfil</h3>
+            <p class="muted">Você pode enviar uma foto, usar a foto do Google ou escolher um dos nossos avatares.</p>
+            <div class="profile-photo-row">
+              <div class="profile-photo-preview" id="profilePhotoPreview">${app.avatarMarkup(me, 'large')}</div>
+              <div class="row gap wrap">
+                <label class="btn small primary">⬆️ Mudar foto<input type="file" id="profilePhotoFile" accept="image/*" hidden></label>
+                ${googlePhoto ? `<button class="btn small" type="button" id="useGooglePhoto" data-google-photo="${e(googlePhoto)}">Usar foto do Google</button>` : ''}
+                <button class="btn small ghost" type="button" id="clearProfilePhoto">Usar avatar do app</button>
+              </div>
+            </div>
+            <input type="hidden" name="photoURL" value="${e(me.photoURL || me.avatarUrl || '')}">
+            <input type="hidden" name="avatarUrl" value="${e(me.avatarUrl || '')}">
+          </div>
+          <div class="full"><h3>Avatares do app</h3><div class="row gap wrap">${avatarButtons}</div><input type="hidden" name="avatarKey" value="${e(me.avatarKey || 'dove')}"></div>
           <div class="full"><button class="btn primary" type="submit">Salvar perfil</button></div>
         </form>
       </section>
@@ -419,6 +579,7 @@
       return;
     }
     const configured = window.ImperioPix && window.ImperioPix.isConfigured();
+    const mpConfigured = window.ImperioPix && window.ImperioPix.mercadoPagoConfigured && window.ImperioPix.mercadoPagoConfigured();
     const amounts = Array.isArray(cfg.suggestedAmounts) && cfg.suggestedAmounts.length ? cfg.suggestedAmounts : [5, 10, 20, 50, 100, 200];
     const purposes = Array.isArray(cfg.purposes) && cfg.purposes.length ? cfg.purposes : ['Dízimo', 'Oferta'];
     const min = Number(cfg.minAmount || 5);
@@ -459,9 +620,9 @@
             </label>
             <div class="full row gap wrap">
               <button class="btn primary" type="submit" ${configured ? '' : 'disabled'}>Gerar QR Code Pix</button>
-              ${cfg.checkoutLink ? '<button class="btn ghost" type="button" id="pixCheckout">Pagar com cartão (Mercado Pago)</button>' : ''}
+              ${mpConfigured ? '<button class="btn ghost" type="button" id="pixCheckout">Pagar com Mercado Pago</button>' : ''}
             </div>
-            <p class="muted full">Valor mínimo: R$ ${e(min.toFixed(2).replace('.', ','))}${cfg.maxAmount ? ` • máximo: R$ ${e(Number(cfg.maxAmount).toFixed(2).replace('.', ','))}` : ''}. Você escolhe quanto quer ofertar.</p>
+            <p class="muted full">Valor mínimo: R$ ${e(min.toFixed(2).replace('.', ','))}${cfg.maxAmount ? ` • máximo: R$ ${e(Number(cfg.maxAmount).toFixed(2).replace('.', ','))}` : ''}. Você escolhe quanto quer ofertar.${mpConfigured ? ' Mercado Pago disponível porque foi cadastrado pela administração.' : ''}</p>
           </form>
         </article>
 
@@ -519,14 +680,31 @@
       <section class="hero">
         <span class="badge">🎬 Mídia</span>
         <h1>Pregações, louvores e transmissões</h1>
-        <p>Assista aos cultos, reveja mensagens e ouça o louvor da nossa igreja.</p>
+        <p>Assista aos cultos, reveja mensagens e escolha se quer abrir aqui no app ou direto no YouTube.</p>
       </section>
-      ${live ? `<section class="section card highlight"><span class="badge">🔴 AO VIVO</span><h2>${e(live.title)}</h2>${live.embed ? `<div class="embed-block"><iframe src="${e(window.ImperioEditor ? window.ImperioEditor.embedUrl(live.embed) || live.embed : live.embed)}" loading="lazy" allowfullscreen frameborder="0"></iframe></div>` : ''}<p>${e(live.description || '')}</p></section>` : ''}
+      ${live ? `<section class="section card highlight"><span class="badge">🔴 AO VIVO</span><h2>${e(live.title)}</h2>${mediaEmbedUrl(live) ? `<div class="embed-block"><iframe src="${e(mediaEmbedUrl(live))}" loading="lazy" allowfullscreen frameborder="0"></iframe></div>` : ''}<p>${e(live.description || '')}</p>${mediaWatchUrl(live) ? `<a class="btn primary" href="${e(mediaWatchUrl(live))}" target="_blank" rel="noopener">Abrir transmissão</a>` : ''}</section>` : ''}
       <section class="section">
-        <div class="section-head"><div><h2>Biblioteca</h2><p class="muted">Conteúdo publicado pela liderança no painel administrativo.</p></div></div>
+        <div class="section-head"><div><h2>Biblioteca</h2><p class="muted">Toque na imagem para assistir. Quando for YouTube, você também pode abrir no YouTube.</p></div></div>
         <div class="grid three">${media.filter(item => !item.live).map(item => {
-          const embed = window.ImperioEditor ? (window.ImperioEditor.embedUrl(item.embed || item.url || '') || '') : '';
-          return `<article class="card media-card">${embed ? `<div class="embed-block"><iframe src="${e(embed)}" loading="lazy" allowfullscreen frameborder="0"></iframe></div>` : (item.image ? `<img class="card-cover" src="${e(item.image)}" alt="${e(item.title)}" loading="lazy">` : '')}<span class="badge">${e(item.category || 'Pregação')}</span><h3>${e(item.title)}</h3><p class="muted">${e(item.speaker || '')} • ${e(app.formatDate(item.date || item.createdAt))}</p><p>${e(item.description || '')}</p>${shareButtons(e, { title: item.title, text: item.description || '', url: app.pageUrl('midia'), image: item.image })}</article>`;
+          const image = mediaImage(item);
+          const embed = mediaEmbedUrl(item);
+          const watch = mediaWatchUrl(item);
+          return `<article class="card media-card">
+            <button class="media-thumb" type="button" data-open-media="${e(item.id)}" aria-label="Abrir ${e(item.title)}">
+              <img src="${e(displaySrc(image || app.logoPath()))}" alt="${e(item.title)}" loading="lazy" onerror="this.onerror=null;this.src='${e(displaySrc(app.logoPath()))}'">
+              <span class="play-badge">▶</span>
+              ${item.category ? `<span class="media-category">${e(item.category)}</span>` : ''}
+            </button>
+            <span class="badge">${e(item.category || 'Pregação')}</span>
+            <h3>${e(item.title)}</h3>
+            <p class="muted">${e(item.speaker || '')} • ${e(app.formatDate(item.date || item.createdAt))}</p>
+            <p>${e(item.description || '')}</p>
+            <div class="row gap wrap">
+              ${embed || watch ? `<button class="btn small primary" type="button" data-open-media="${e(item.id)}">Assistir no app</button>` : ''}
+              ${watch ? `<a class="btn small ghost" href="${e(watch)}" target="_blank" rel="noopener">Ver no YouTube</a>` : ''}
+            </div>
+            ${shareButtons(e, { title: item.title, text: item.description || '', url: watch || app.pageUrl('midia'), image })}
+          </article>`;
         }).join('') || `<div class="empty">Nenhuma mídia publicada ainda.${settings.social && settings.social.youtube ? ` Acompanhe no <a href="${e(settings.social.youtube)}" target="_blank" rel="noopener">YouTube</a>.` : ''}</div>`}</div>
       </section>
     </div>`;
@@ -689,6 +867,16 @@
       if (share) {
         return app.shareContent({ title: share.dataset.shareTitle, text: share.dataset.shareText, url: share.dataset.shareUrl, image: share.dataset.shareImage }, share.dataset.share).catch(error => app.toast(error.message || 'Não foi possível compartilhar.'));
       }
+      const saveVerse = event.target.closest('[data-save-verse]');
+      if (saveVerse) {
+        if (!app.hasRole('lider')) return app.toast('Apenas liderança pode salvar versículos no app.');
+        try {
+          const verse = JSON.parse(saveVerse.dataset.saveVerse);
+          const id = app.uid('verse');
+          await app.setAt('devotionalVerses/' + id, Object.assign({ id, visible: true }, verse));
+          app.toast('Versículo salvo na biblioteca do app.');
+        } catch (error) { app.toast('Não foi possível salvar.'); }
+      }
       if (event.target.closest('[data-logout]')) return app.signOut();
       const presence = event.target.closest('[data-presence]');
       if (presence) {
@@ -700,6 +888,34 @@
         avatar.classList.add('active');
         const input = doc.querySelector('input[name="avatarKey"]');
         if (input) input.value = avatar.dataset.avatar;
+        const photo = doc.querySelector('input[name="photoURL"]');
+        const avatarUrl = doc.querySelector('input[name="avatarUrl"]');
+        if (photo) photo.value = '';
+        if (avatarUrl) avatarUrl.value = '';
+        const preview = doc.getElementById('profilePhotoPreview');
+        if (preview) preview.innerHTML = `<div class="avatar large row center" aria-label="Avatar" style="font-size:2rem">${app.escapeHtml(app.avatarMap[avatar.dataset.avatar] || app.avatarMap.dove)}</div>`;
+      }
+      const googlePhoto = event.target.closest('#useGooglePhoto');
+      if (googlePhoto) {
+        const src = googlePhoto.dataset.googlePhoto || '';
+        const photo = doc.querySelector('input[name="photoURL"]');
+        if (photo) photo.value = src;
+        const avatarUrl = doc.querySelector('input[name="avatarUrl"]');
+        if (avatarUrl) avatarUrl.value = '';
+        const preview = doc.getElementById('profilePhotoPreview');
+        if (preview) preview.innerHTML = `<img class="avatar large" src="${app.escapeHtml(src)}" alt="Foto do Google">`;
+        doc.querySelectorAll('.avatar-option').forEach(btn => btn.classList.remove('active'));
+      }
+      const clearPhoto = event.target.closest('#clearProfilePhoto');
+      if (clearPhoto) {
+        const photo = doc.querySelector('input[name="photoURL"]');
+        const avatarUrl = doc.querySelector('input[name="avatarUrl"]');
+        const avatarKey = doc.querySelector('input[name="avatarKey"]');
+        if (photo) photo.value = '';
+        if (avatarUrl) avatarUrl.value = '';
+        const key = avatarKey ? avatarKey.value : 'dove';
+        const preview = doc.getElementById('profilePhotoPreview');
+        if (preview) preview.innerHTML = `<div class="avatar large row center" aria-label="Avatar" style="font-size:2rem">${app.escapeHtml(app.avatarMap[key] || app.avatarMap.dove)}</div>`;
       }
       const option = event.target.closest('[data-quiz-option]');
       if (option) {
@@ -724,7 +940,38 @@
     if (profileForm) profileForm.onsubmit = async event => {
       event.preventDefault();
       const values = Object.fromEntries(new FormData(profileForm).entries());
+      if (!values.photoURL) values.avatarUrl = '';
       try { await app.updateProfile(values); } catch (error) { app.toast(error.message); }
+    };
+
+    const profilePhotoFile = doc.getElementById('profilePhotoFile');
+    if (profilePhotoFile) profilePhotoFile.onchange = async () => {
+      const file = profilePhotoFile.files && profilePhotoFile.files[0];
+      profilePhotoFile.value = '';
+      if (!file) return;
+      try {
+        let src = '';
+        if (window.ImperioEditor && window.ImperioEditor.toWebp) {
+          app.toast('Preparando foto de perfil...');
+          const result = await window.ImperioEditor.toWebp(file, { maxWidth: 512, maxHeight: 512, quality: 0.82 });
+          src = result.dataUrl;
+        } else {
+          src = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('Não foi possível ler a foto.'));
+            reader.readAsDataURL(file);
+          });
+        }
+        const photo = doc.querySelector('input[name="photoURL"]');
+        const avatarUrl = doc.querySelector('input[name="avatarUrl"]');
+        if (photo) photo.value = src;
+        if (avatarUrl) avatarUrl.value = '';
+        const preview = doc.getElementById('profilePhotoPreview');
+        if (preview) preview.innerHTML = `<img class="avatar large" src="${app.escapeHtml(src)}" alt="Foto de perfil">`;
+        doc.querySelectorAll('.avatar-option').forEach(btn => btn.classList.remove('active'));
+        app.toast('Foto pronta. Toque em Salvar perfil para aplicar.');
+      } catch (error) { app.toast(error.message || 'Não foi possível mudar a foto.'); }
     };
 
     // Definir senha para quem entrou pelo Google e ainda não tem senha própria.
@@ -856,6 +1103,7 @@
       if (!window.ImperioAI) return app.toast('Módulo de IA não carregado.');
       const text = String(inputValue || '').trim();
       if (text.length < 3) return app.toast('Escreva um pouco mais sobre o que você sente.');
+      setPageBusy(doc, true);
       target.hidden = false;
       target.innerHTML = '<div class="ai-loading"><span class="spinner"></span> Buscando uma palavra para você...</div>';
       if (button) { button.disabled = true; button.dataset.label = button.textContent; button.textContent = 'Buscando...'; }
@@ -921,9 +1169,12 @@
 
     pixForm.onsubmit = async event => {
       event.preventDefault();
+      setPageBusy(doc, true);
       const values = Object.fromEntries(new FormData(pixForm).entries());
       try {
         const amount = Pix.validateAmount(values.amount);
+        // Valida chave/nome/cidade antes de registrar a intenção de doação.
+        Pix.buildPayload({ amount, txid: 'VALIDARPIX', description: values.purpose });
         const donation = await Pix.registerDonation({
           amount,
           purpose: values.purpose,
@@ -971,6 +1222,7 @@
         };
         resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (error) {
+        setPageBusy(doc, false);
         app.toast(error.message || 'Não foi possível gerar o Pix.');
       }
     };
@@ -1001,6 +1253,48 @@
         doc.querySelectorAll('.verse-item').forEach(item => {
           item.hidden = Boolean(theme) && item.dataset.theme !== theme;
         });
+      };
+    });
+
+    // Filtros da página de membros (cargo, célula e celular/WhatsApp).
+    const memberGrid = doc.getElementById('memberGrid');
+    if (memberGrid) {
+      const search = doc.getElementById('memberSearch');
+      const cellFilter = doc.getElementById('memberCellFilter');
+      function applyMemberFilters() {
+        const activeRole = (doc.querySelector('.filter-chip[data-member-role].active') || {}).dataset?.memberRole || '';
+        const text = String(search && search.value || '').trim().toLowerCase();
+        const cleanDigits = digits(text);
+        const cell = cellFilter ? cellFilter.value : '';
+        let shown = 0;
+        memberGrid.querySelectorAll('.member-card').forEach(card => {
+          const roleOk = !activeRole || card.dataset.memberRole === activeRole;
+          const cellOk = !cell || card.dataset.memberCell === cell;
+          const hay = card.dataset.memberSearch || '';
+          const textOk = !text || hay.includes(text) || (cleanDigits && hay.includes(cleanDigits));
+          const visible = roleOk && cellOk && textOk;
+          card.hidden = !visible;
+          if (visible) shown += 1;
+        });
+        const empty = doc.getElementById('memberEmpty');
+        if (empty) empty.hidden = shown > 0;
+      }
+      doc.querySelectorAll('.filter-chip[data-member-role]').forEach(chip => {
+        chip.onclick = () => {
+          doc.querySelectorAll('.filter-chip[data-member-role]').forEach(item => item.classList.remove('active'));
+          chip.classList.add('active');
+          applyMemberFilters();
+        };
+      });
+      if (search) search.oninput = applyMemberFilters;
+      if (cellFilter) cellFilter.onchange = applyMemberFilters;
+    }
+
+    // Abrir vídeo/mídia em modal sem sair do app, com opção de abrir no YouTube.
+    doc.querySelectorAll('[data-open-media]').forEach(btn => {
+      btn.onclick = () => {
+        const item = app.getAt('media/' + btn.dataset.openMedia, null);
+        if (item) openMediaModal(doc, item);
       };
     });
 
@@ -1045,6 +1339,37 @@
     };
   }
 
+  function openMediaModal(doc, item) {
+    const e = app.escapeHtml;
+    const embed = mediaEmbedUrl(item);
+    const watch = mediaWatchUrl(item);
+    const image = mediaImage(item);
+    let modal = doc.getElementById('mediaModal');
+    if (!modal) {
+      modal = doc.createElement('dialog');
+      modal.id = 'mediaModal';
+      modal.className = 'modal';
+      doc.body.appendChild(modal);
+    }
+    modal.innerHTML = `<form method="dialog" class="modal-card wide media-modal-card">
+      <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
+      <h2>${e(item.title || 'Mídia')}</h2>
+      ${embed ? `<div class="embed-block"><iframe src="${e(embed)}" loading="lazy" allowfullscreen frameborder="0"></iframe></div>` : (image ? `<img class="modal-cover" src="${e(displaySrc(image))}" alt="${e(item.title || '')}">` : '')}
+      <p class="muted">${e(item.speaker || '')}${item.speaker ? ' • ' : ''}${e(app.formatDate(item.date || item.createdAt))}</p>
+      <p>${e(item.description || '')}</p>
+      <div class="row gap wrap">
+        ${watch ? `<a class="btn primary" href="${e(watch)}" target="_blank" rel="noopener">Abrir no YouTube</a>` : ''}
+        <button class="btn ghost" value="cancel" type="submit">Fechar</button>
+      </div>
+      ${shareButtons(e, { title: item.title, text: item.description || '', url: watch || app.pageUrl('midia'), image })}
+    </form>`;
+    modal.querySelectorAll('[data-share]').forEach(btn => {
+      btn.type = 'button';
+      btn.onclick = () => app.shareContent({ title: btn.dataset.shareTitle, text: btn.dataset.shareText, url: btn.dataset.shareUrl, image: btn.dataset.shareImage }, btn.dataset.share);
+    });
+    modal.showModal();
+  }
+
   function openContentModal(doc, item) {
     const e = app.escapeHtml;
     const image = mainImage(item);
@@ -1057,7 +1382,7 @@
     }
     modal.innerHTML = `<form method="dialog" class="modal-card wide">
       <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
-      ${image ? `<img class="modal-cover" src="${e(image)}" alt="${e(item.title || '')}">` : ''}
+      ${image ? `<img class="modal-cover" src="${e(displaySrc(image))}" alt="${e(item.title || '')}">` : ''}
       <h2>${e(item.title || '')}</h2>
       <p class="muted">${e(app.formatDate(item.date || item.createdAt))}${item.author || item.authorName ? ' • ' + e(item.author || item.authorName) : ''}</p>
       ${richContent(item.content)}
