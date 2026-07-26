@@ -68,6 +68,47 @@ O email `wesleystudio@gmail.com` está registrado como **administrador fixo** em
 (`ADMIN_EMAILS`): ele sempre entra como pastor/admin — por senha ou pelo Google — e não pode ser
 rebaixado pela tela de usuários. Para adicionar outro administrador fixo, inclua o email nessa lista.
 
+## Login com Google no APK (Android)
+
+No **navegador** o botão "Entrar com Google" abre um popup no domínio
+`imperio-28408.firebaseapp.com`. Dentro do **APK** esse popup nunca funciona, porque:
+
+1. a WebView do Android bloqueia `window.open()`;
+2. o Google recusa OAuth dentro de WebView embutida (`disallowed_useragent`);
+3. o app roda em `https://app.imperialbatista.local`, que não é um domínio autorizado
+   do Firebase Auth (`auth/unauthorized-domain`).
+
+Era exatamente por isso que **só o login por email/senha funcionava no APK**: ele é uma
+chamada REST simples, sem popup e sem checagem de domínio.
+
+Agora o APK usa a **tela nativa de contas do Android** (Credential Manager, via
+`@capgo/capacitor-social-login`), pega o `idToken` do Google e troca por sessão Firebase
+com `signInWithCredential()`. A conta, o email e o cargo (pastor/admin) continuam os mesmos
+do site. No navegador nada muda: continua usando o popup.
+
+### O que precisa estar cadastrado no Google Cloud
+
+No projeto **imperio-28408** ([Google Cloud → Credenciais](https://console.cloud.google.com/apis/credentials))
+são necessários **dois** clientes OAuth:
+
+| Tipo | Para que serve |
+| --- | --- |
+| **Aplicativo da Web** | Já existe. É o `googleWebClientId` usado pelo app. |
+| **Android** | Precisa existir com o pacote e o SHA-1 abaixo. |
+
+Crie (ou confira) o cliente **Android** com exatamente:
+
+- **Nome do pacote:** `br.com.imperialbatista.app`
+- **Impressão digital SHA-1:** `E7:57:DA:8C:3E:09:04:00:6C:EC:70:6E:51:A0:A8:D8:20:43:96:F5`
+
+Esse SHA-1 é fixo: o APK é sempre assinado com `android-signing/imperio-release.keystore`
+(aplicada por `scripts/configure-android-signing.js`). Sem uma chave fixa, cada build do
+GitHub Actions geraria um SHA-1 diferente e o Google bloquearia o login com o erro
+`[28444] Developer console is not set up correctly`.
+
+> Alterações no Google Cloud podem levar algumas horas para valer. Se a tela de consentimento
+> estiver em modo **Testing**, adicione os emails em **Público-alvo → Usuários de teste**.
+
 ## Login e senha
 
 - Entrada por **email ou nome de usuário** + senha, ou pelo **Google**.

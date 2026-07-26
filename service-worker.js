@@ -1,7 +1,7 @@
-const CACHE_NAME = 'imperio-batista-v7';
+const CACHE_NAME = 'imperio-batista-v8';
 const ASSETS = [
   './', './index.html', './admin.html', './manifest.json', './css/style.css',
-  './js/vendor-qrcode.js', './js/security.js', './js/firebase.js', './js/core.js', './js/editor.js', './js/ai.js', './js/bible.js', './js/pix.js', './js/pages.js', './js/app.js', './js/admin.js', './js/page-bridge.js',
+  './js/vendor-qrcode.js', './js/security.js', './js/native-auth.js', './js/firebase.js', './js/core.js', './js/editor.js', './js/ai.js', './js/bible.js', './js/pix.js', './js/pages.js', './js/app.js', './js/admin.js', './js/page-bridge.js',
   './pages/home.html', './pages/membros.html', './pages/cultos.html', './pages/agenda.html', './pages/versiculo.html', './pages/palavra.html', './pages/atividades.html', './pages/celula.html', './pages/perfil.html', './pages/postar.html', './pages/quiz.html',
   './pages/dizimo.html', './pages/oracao.html', './pages/midia.html', './pages/leitura.html', './pages/aniversarios.html', './pages/biblia.html', './pages/sobre.html', './pages/contato.html',
   './assets/logo.png', './assets/favicon.png', './assets/logo-azul.png', './assets/favicon-azul.png', './assets/logo-roxo.png', './assets/favicon-roxo.png',

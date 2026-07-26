@@ -1282,7 +1282,14 @@
     } catch (error) { app.toast(error.message || 'Falha no login.'); }
   };
   document.getElementById('adminGoogleLogin').onclick = async () => {
-    try { await app.signInGoogle(); authModal.close(); } catch (error) { app.toast(error.message || 'Falha no Google.'); }
+    try {
+      await app.signInGoogle();
+      authModal.close();
+    } catch (error) {
+      if (error && error.code === 'imperio/google-cancelled') return;
+      app.toast(error.message || 'Falha no Google.');
+      if (error && error.nativeMessage) console.warn('[ImperioGoogle]', error.code, error.nativeMessage);
+    }
   };
   themeBtn.onclick = () => { app.toggleTheme(); render(); };
 

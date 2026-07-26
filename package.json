@@ -12,15 +12,17 @@
     "cap:sync": "npm run build:web && npx cap sync android",
     "cap:icons": "npx @capacitor/assets generate --android --assetPath resources --iconBackgroundColor '#4b0f43' --iconBackgroundColorDark '#100517' --splashBackgroundColor '#f8f2fa' --splashBackgroundColorDark '#100517'",
     "cap:open:android": "npx cap open android",
-    "android:prepare": "npm run build:web && ([ -d android ] || npx cap add android) && npm run cap:icons && npx cap sync android",
+    "android:prepare": "npm run build:web && ([ -d android ] || npx cap add android) && npm run cap:icons && npx cap sync android && npm run android:signing",
     "android:build": "npm run android:build:debug",
     "android:build:debug": "npm run android:prepare && cd android && chmod +x ./gradlew && ./gradlew assembleDebug",
-    "android:build:release": "npm run android:prepare && cd android && chmod +x ./gradlew && ./gradlew assembleRelease"
+    "android:build:release": "npm run android:prepare && cd android && chmod +x ./gradlew && ./gradlew assembleRelease",
+    "android:signing": "node scripts/configure-android-signing.js"
   },
   "devDependencies": {
     "@capacitor/android": "8.4.2",
     "@capacitor/assets": "3.0.5",
     "@capacitor/cli": "8.4.2",
-    "@capacitor/core": "8.4.2"
+    "@capacitor/core": "8.4.2",
+    "@capgo/capacitor-social-login": "8.3.38"
   }
 }
