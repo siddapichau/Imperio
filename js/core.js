@@ -175,14 +175,14 @@
       whatsapp: '(00) 00000-0000',
       phone: '(00) 0000-0000',
       email: 'contato@imperialbatista.local',
-      logoPath: 'assets/logo.png',
-      palette: 'vinho',
+      logoPath: 'assets/logo-roxo.png',
+      palette: 'roxo',
       allowUserPalette: true,
       defaultMode: 'light',
       theme: {
-        primary: '#6f1025',
-        primary2: '#a61e3a',
-        accent: '#f2c166'
+        primary: '#4b0f43',
+        primary2: '#7a1d63',
+        accent: '#e7b566'
       },
       social: { instagram: '', facebook: '', youtube: '', site: '' },
       share: {
@@ -1120,8 +1120,8 @@
   async function showNotification(title, options) {
     const opts = Object.assign({
       body: '',
-      icon: 'assets/logo.png',
-      badge: 'assets/favicon.png',
+      icon: 'assets/logo-roxo.png',
+      badge: 'assets/favicon-roxo.png',
       tag: 'imperio-batista',
       data: { url: pageUrl('home') }
     }, options || {});
@@ -1209,9 +1209,9 @@
   function activePaletteId() {
     const allowUser = getAt('settings/allowUserPalette', true) !== false;
     const userChoice = allowUser ? state.palette : '';
-    const adminChoice = getAt('settings/palette', 'vinho');
-    const chosen = userChoice || adminChoice || 'vinho';
-    return palettes[chosen] ? chosen : 'vinho';
+    const adminChoice = getAt('settings/palette', 'roxo');
+    const chosen = userChoice || adminChoice || 'roxo';
+    return palettes[chosen] ? chosen : 'roxo';
   }
 
   function activePalette() {

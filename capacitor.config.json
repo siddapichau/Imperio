@@ -1,7 +1,7 @@
 {
   "appId": "br.com.imperialbatista.app",
   "appName": "Igreja Imperial Batista",
-  "webDir": ".",
+  "webDir": "www",
   "bundledWebRuntime": false,
   "android": {
     "allowMixedContent": false
@@ -12,7 +12,7 @@
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 1200,
-      "backgroundColor": "#6f1025",
+      "backgroundColor": "#4b0f43",
       "androidSplashResourceName": "splash",
       "showSpinner": false
     }

@@ -11,8 +11,8 @@
     "minimal-ui"
   ],
   "orientation": "portrait-primary",
-  "background_color": "#fbf3f5",
-  "theme_color": "#6f1025",
+  "background_color": "#f8f2fa",
+  "theme_color": "#4b0f43",
   "lang": "pt-BR",
   "dir": "ltr",
   "categories": [
@@ -22,7 +22,7 @@
   ],
   "icons": [
     {
-      "src": "assets/favicon.png",
+      "src": "assets/favicon-roxo.png",
       "sizes": "64x64",
       "type": "image/png",
       "purpose": "any"

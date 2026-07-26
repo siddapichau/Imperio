@@ -81,22 +81,37 @@ rebaixado pela tela de usuários. Para adicionar outro administrador fixo, inclu
 ## Gerar o APK com ícone e nome corretos
 
 O nome do app vem de `manifest.json` (`name` / `short_name`) e de `capacitor.config.json`
-(`appName`), e os ícones já estão gerados em `assets/` e `resources/`.
+(`appName`), e os ícones já estão gerados em `assets/` e `resources/` com a logo **roxa vinho**.
+
+### Pelo GitHub Actions
+
+Este repositório já possui o workflow `.github/workflows/build-android-apk.yml`. Ele roda automaticamente em:
+
+- Pull Requests para `main`;
+- pushes em `main`;
+- execução manual pelo botão **Run workflow** na aba **Actions**.
+
+Quando terminar, baixe o arquivo na área **Artifacts** do workflow:
+`Igreja-Imperial-Batista-APK-roxo-vinho`.
+
+### Localmente
 
 ```bash
 npm install
-npx cap add android      # apenas na primeira vez
-npm run cap:sync         # copia o site para o projeto Android
-npm run cap:icons        # aplica ícone e splash a partir de resources/
-npm run cap:open:android # abre no Android Studio para gerar o APK/AAB
+npm run android:build       # gera o APK debug instalável em android/app/build/outputs/apk/debug/
+# ou
+npm run android:build:release
 ```
+
+O script prepara a pasta `www/`, cria o projeto Android se ele ainda não existir, sincroniza o Capacitor,
+aplica ícone/splash a partir de `resources/` e executa o Gradle.
 
 - `resources/icon.png` — ícone base (1024×1024)
 - `resources/icon-foreground.png` + `resources/icon-background.png` — ícone adaptativo do Android
 - `resources/splash.png` e `resources/splash-dark.png` — telas de abertura
 
 Pelo **PWABuilder**, o `manifest.json` já entrega os tamanhos 96→512 e um ícone `maskable`,
-então a logo é usada automaticamente e o app é instalado como **Igreja Imperial Batista**.
+então a logo roxa vinho é usada automaticamente e o app é instalado como **Igreja Imperial Batista**.
 
 ## Configuração inicial
 
@@ -134,11 +149,11 @@ Depois acesse <http://localhost:8080/index.html>.
 
 ## Gerar o APK
 
+Use o GitHub Actions do PR/push para gerar o APK automaticamente. Se quiser gerar localmente:
+
 ```bash
-npm run cap:init
-npm run cap:add:android
-npm run cap:sync
-npm run cap:open:android
+npm install
+npm run android:build
 ```
 
 Ou publique o site e use o [PWABuilder](https://www.pwabuilder.com/).
