@@ -6,9 +6,16 @@
   <meta name="theme-color" content="#6f1025">
   <meta name="description" content="Aplicativo da Igreja Imperial Batista: cultos, células, presença, devocionais, oração, notícias e comunhão.">
   <title>Igreja Imperial Batista</title>
+  <meta name="application-name" content="Igreja Imperial Batista">
+  <meta name="apple-mobile-web-app-title" content="Imperial Batista">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="assets/favicon.png">
-  <link rel="apple-touch-icon" href="assets/logo.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="app-shell">
@@ -46,8 +53,14 @@
         </div>
         <button class="icon-button" id="closeDrawer" aria-label="Fechar menu">×</button>
       </div>
-      <nav id="mobileNav" class="mobile-nav"></nav>
-      <a class="drawer-admin" href="admin.html">⚙️ Administração</a>
+      <div class="drawer-scroll">
+        <nav id="mobileNav" class="mobile-nav"></nav>
+      </div>
+      <div class="drawer-foot" id="drawerFoot">
+        <a class="drawer-admin" id="drawerAdminLink" href="admin.html" hidden>⚙️ Painel administrativo</a>
+        <button class="drawer-user" id="drawerProfile" type="button" hidden></button>
+        <div class="drawer-session" id="drawerSession"></div>
+      </div>
     </div>
   </aside>
 
@@ -102,8 +115,35 @@
         <button class="btn primary" id="emailLogin" type="submit">Entrar</button>
         <button class="btn ghost" id="registerToggle" type="button">Criar conta</button>
       </div>
-      <button class="btn google" id="googleLogin" type="button">Entrar com Google (mesmo email = mesma conta admin)</button>
-      <p class="help-text" id="authHelp">Se seu email já é admin, ao entrar com Google no mesmo email o sistema abre a mesma conta automaticamente. Esqueceu a senha? Fale com a secretaria.</p>
+      <button class="btn link login-only" id="forgotPassword" type="button">Esqueci minha senha</button>
+      <button class="btn google" id="googleLogin" type="button">Entrar com Google</button>
+      <p class="help-text" id="authHelp">Entrando com o Google no mesmo email de uma conta que já existe, o app abre a mesma conta e mantém seu cargo. Depois você pode criar uma senha no seu perfil.</p>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="passwordSetupModal">
+    <form method="dialog" class="modal-card" id="passwordSetupForm">
+      <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
+      <img data-app-logo src="assets/logo.png" alt="" class="modal-logo">
+      <h2>Crie uma senha para sua conta</h2>
+      <p class="muted">Você entrou com o Google. Defina uma senha para também poder entrar com email e senha, mesmo sem o Google.</p>
+      <label>Nova senha
+        <span class="password-field">
+          <input id="setupPassword" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required>
+          <button class="field-icon" type="button" data-toggle-password="#setupPassword" aria-label="Mostrar senha">👁️</button>
+        </span>
+      </label>
+      <label>Confirmar senha
+        <span class="password-field">
+          <input id="setupPasswordConfirm" type="password" autocomplete="new-password" placeholder="Repita a senha" required>
+          <button class="field-icon" type="button" data-toggle-password="#setupPasswordConfirm" aria-label="Mostrar senha">👁️</button>
+        </span>
+      </label>
+      <p class="help-text">Use no mínimo 8 caracteres com letra maiúscula, minúscula, número e símbolo.</p>
+      <div class="row gap wrap auth-actions">
+        <button class="btn primary" type="submit">Salvar senha</button>
+        <button class="btn ghost" type="button" id="skipPasswordSetup">Agora não</button>
+      </div>
     </form>
   </dialog>
 

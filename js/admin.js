@@ -20,26 +20,42 @@
   if (closeAdminDrawerBtn) closeAdminDrawerBtn.onclick = closeAdminDrawer;
   if (adminDrawerBackdrop) adminDrawerBackdrop.onclick = closeAdminDrawer;
 
-  const tabs = [
-    ['dashboard', '📊 Dashboard'],
-    ['geral', '🎨 Geral/Menu'],
-    ['temas', '🌈 Temas'],
-    ['conteudo', '📰 Conteúdo'],
-    ['cultos', '⛪ Cultos/Agenda'],
-    ['celulas', '🏡 Células'],
-    ['midia', '🎬 Mídia'],
-    ['usuarios', '👥 Usuários'],
-    ['posts', '✅ Aprovação'],
-    ['devocionais', '🙏 Devocionais'],
-    ['quizzes', '🧠 Quizzes'],
-    ['pix', '💝 Pix/Doações'],
-    ['ia', '✨ IA DeepSeek'],
-    ['paginas', '📄 Páginas'],
-    ['mensagens', '✉️ Mensagens'],
-    ['seguranca', '🔐 Segurança'],
-    ['json', '🧩 JSON'],
-    ['firebase', '🔥 Firebase']
+  // Cada aba declara a permissão necessária. Áreas sensíveis exigem 'admin-only' (pastor/admin).
+  const ALL_TABS = [
+    ['dashboard', '📊 Dashboard', 'admin.dashboard'],
+    ['geral', '🎨 Geral/Menu', 'settings.identity'],
+    ['temas', '🌈 Temas', 'settings.identity'],
+    ['conteudo', '📰 Conteúdo', 'content.news'],
+    ['cultos', '⛪ Cultos/Agenda', 'content.services'],
+    ['celulas', '🏡 Células', 'content.cells'],
+    ['midia', '🎬 Mídia', 'content.media'],
+    ['usuarios', '👥 Usuários', 'users.view'],
+    ['posts', '✅ Aprovação', 'posts.approve'],
+    ['devocionais', '🙏 Devocionais', 'content.devotionals'],
+    ['quizzes', '🧠 Quizzes', 'content.quizzes'],
+    ['pix', '💝 Pix/Doações', 'integrations.pix'],
+    ['ia', '✨ IA DeepSeek', 'integrations.ai'],
+    ['paginas', '📄 Páginas', 'content.pages'],
+    ['mensagens', '✉️ Mensagens', 'messages.read'],
+    ['seguranca', '🔐 Segurança', 'security.manage'],
+    ['json', '🧩 JSON', 'security.manage'],
+    ['firebase', '🔥 Firebase', 'security.manage']
   ];
+
+  /** Abas que o usuário logado pode realmente abrir. */
+  function allowedTabs() {
+    return ALL_TABS.filter(([, , capability]) => app.can(capability));
+  }
+
+  /** Bloco padrão exibido quando alguém tenta abrir uma área sem permissão. */
+  function deniedCard(area) {
+    return `<section class="card danger"><h2>🔒 Área restrita</h2><p>A seção <strong>${e(area)}</strong> é exclusiva do pastor/administrador da igreja.</p><p class="muted">Seu cargo atual: <strong>${e(roleName(app.currentRole()))}</strong>. Se você precisa deste acesso, fale com o administrador.</p></section>`;
+  }
+
+  function roleName(role) {
+    const map = { pastor: 'Administrador (pastor)', lider: 'Líder', editor: 'Editor', membro: 'Membro' };
+    return map[app.normalizeRole(role)] || 'Membro';
+  }
 
   const templates = {
     news: { title: 'Nova notícia', summary: 'Resumo da notícia', content: 'Conteúdo completo', author: 'Igreja', status: 'approved', featured: false, date: new Date().toISOString(), createdAt: new Date().toISOString(), image: '' },
@@ -83,16 +99,24 @@
       document.getElementById('openAdminLogin').onclick = () => authModal.showModal();
       return false;
     }
-    if (!app.hasRole('pastor')) {
-      root.innerHTML = `<div class="card danger"><h1>Acesso restrito</h1><p>Somente pastor/admin pode acessar todo o painel administrativo.</p><p>Seu cargo atual: <strong>${e(user.role || 'membro')}</strong></p><button class="btn" id="logoutRestricted">Sair</button></div>`;
+    if (!app.can('admin.access')) {
+      root.innerHTML = `<div class="card danger"><h1>Acesso restrito</h1><p>O painel administrativo é para administradores, líderes e editores da igreja.</p><p>Seu cargo atual: <strong>${e(roleName(user.role))}</strong>.</p><p class="muted">Se você deveria ter acesso, peça ao administrador para ajustar seu cargo na aba Usuários.</p><div class="row gap wrap"><a class="btn primary" href="index.html">Voltar ao aplicativo</a><button class="btn ghost" id="logoutRestricted">Sair</button></div></div>`;
       document.getElementById('logoutRestricted').onclick = () => app.signOut();
       return false;
+    }
+    // Se a aba salva não é permitida para este cargo, abre a primeira liberada.
+    const permitted = allowedTabs();
+    if (!permitted.some(([id]) => id === activeTab)) {
+      activeTab = permitted.length ? permitted[0][0] : 'dashboard';
+      localStorage.setItem('imperioAdminTab', activeTab);
     }
     return true;
   }
 
   function shell(content) {
     const user = app.state.user;
+    const tabs = allowedTabs();
+    const role = app.currentRole();
     const stats = {
       users: list('users').length,
       pending: list('posts').filter(p => p.status === 'pending').length,
@@ -102,7 +126,12 @@
     const tabsHtml = tabs.map(([id, label]) => `<button class="btn small admin-tab ${activeTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('');
     const mobileTabsHtml = tabs.map(([id, label]) => `<button class="nav-link ${activeTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('');
     const currentLabel = (tabs.find(t => t[0] === activeTab) || ['',''])[1] || activeTab;
-    root.innerHTML = `<section class="admin-hero"><div class="hero"><span class="badge">Painel pastor/admin</span><h1>Editar todo o aplicativo</h1><p>Altere menus, identidade visual, conteúdo, cargos, células, presença e quizzes. Tudo salvo no Firebase. Google vincula por email ao mesmo admin.</p></div><div class="grid"><div class="card"><h2>${e(user.name)}</h2><p class="muted">Cargo: ${e(user.role)}<br>Email: ${e(user.email || '')}<br>Modo: ${e(window.ImperioFirebase.getMode())}${user.linkedTo ? '<br><small>🔗 Conta vinculada via Google (mesmo email)</small>' : ''}</p></div><div class="grid two"><div class="card kpi"><strong>${stats.users}</strong><span>usuários</span></div><div class="card kpi"><strong>${stats.pending}</strong><span>posts pendentes</span></div><div class="card kpi"><strong>${stats.services}</strong><span>cultos</span></div><div class="card kpi"><strong>${stats.cells}</strong><span>células</span></div></div></div></section>
+    const heroText = role === 'pastor'
+      ? 'Você é administrador: pode editar menus, identidade visual, conteúdo, cargos, células, Pix, IA e segurança.'
+      : role === 'lider'
+        ? 'Como líder você cuida de conteúdo, cultos, agenda, células, quizzes, aprovação de posts e mensagens. Pix, IA e segurança são exclusivos do administrador.'
+        : 'Como editor você cuida de notícias, avisos, mídia, devocionais e páginas. Demais áreas são da liderança.';
+    root.innerHTML = `<section class="admin-hero"><div class="hero"><span class="badge">Painel • ${e(roleName(role))}</span><h1>Gestão do aplicativo</h1><p>${e(heroText)}</p></div><div class="grid"><div class="card"><h2>${e(user.name)}</h2><p class="muted">Cargo: <strong>${e(roleName(user.role))}</strong><br>Email: ${e(user.email || '')}<br>Modo: ${e(window.ImperioFirebase.getMode())}${user.linkedTo ? '<br><small>🔗 Conta vinculada via Google (mesmo email)</small>' : ''}</p><p class="muted"><small>${tabs.length} de ${ALL_TABS.length} seções liberadas para o seu cargo.</small></p></div><div class="grid two"><div class="card kpi"><strong>${stats.users}</strong><span>usuários</span></div><div class="card kpi"><strong>${stats.pending}</strong><span>posts pendentes</span></div><div class="card kpi"><strong>${stats.services}</strong><span>cultos</span></div><div class="card kpi"><strong>${stats.cells}</strong><span>células</span></div></div></div></section>
       <div class="admin-mobile-bar"><button class="btn primary small" id="openDrawerFromContent">☰ ${currentLabel}</button><select id="adminTabSelect" class="admin-tab-select">${tabs.map(([id, label]) => `<option value="${id}" ${activeTab===id?'selected':''}>${label}</option>`).join('')}</select></div>
       <nav class="admin-tabs">${tabsHtml}</nav><section id="adminContent">${content}</section>`;
     root.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { activeTab = btn.dataset.tab; localStorage.setItem('imperioAdminTab', activeTab); closeAdminDrawer(); render(); });
@@ -115,7 +144,13 @@
       adminMobileNav.querySelectorAll('[data-tab]').forEach(btn => btn.onclick = () => { activeTab = btn.dataset.tab; localStorage.setItem('imperioAdminTab', activeTab); closeAdminDrawer(); render(); });
     }
     const mobileLogout = document.getElementById('adminMobileLogout');
-    if (mobileLogout) mobileLogout.onclick = () => { if (confirm('Sair?')) app.signOut(); };
+    if (mobileLogout) mobileLogout.onclick = () => { if (confirm('Deseja sair da sua conta?')) app.signOut(); };
+    const mobileSwitch = document.getElementById('adminMobileSwitch');
+    if (mobileSwitch) mobileSwitch.onclick = async () => {
+      closeAdminDrawer();
+      await app.signOut();
+      authModal.showModal();
+    };
   }
 
   function dashboard() {
@@ -156,7 +191,48 @@
   function usuarios() {
     const users = list('users').sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     const cells = app.getAt('cells', {});
-    return `<section class="card"><div class="section-head"><div><h2>Usuários e cargos</h2><p class="muted">Cargos: membro, editor, líder e pastor/admin.</p></div><button class="btn primary small" data-add-user="1">Adicionar usuário</button></div><div class="table-wrap"><table><thead><tr><th>Membro</th><th>Contato</th><th>Cargo</th><th>Célula</th><th>Nota</th><th>Ações</th></tr></thead><tbody>${users.map(u => `<tr><td><div class="row gap"><span>${app.avatarMarkup(u, 'avatar-sm')}</span><div><strong>${e(u.name)}</strong><br><small>${e(u.username || u.id)}</small></div></div></td><td>${e(u.email || '')}<br>${e(u.whatsapp || '')}</td><td><select data-role-user="${e(u.id)}"><option ${u.role === 'membro' ? 'selected' : ''}>membro</option><option ${u.role === 'editor' ? 'selected' : ''}>editor</option><option ${u.role === 'lider' ? 'selected' : ''} value="lider">lider</option><option ${u.role === 'pastor' ? 'selected' : ''}>pastor</option></select></td><td>${e(cells[u.cellId] ? cells[u.cellId].name : '-')}</td><td>${e(u.note || '')}</td><td><button class="btn small" data-edit-path="users/${e(u.id)}">Editar</button> <button class="btn small danger" data-delete-path="users/${e(u.id)}">Excluir</button></td></tr>`).join('')}</tbody></table></div></section>`;
+    const canManage = app.can('users.manage');
+    const canChangeRole = app.can('users.role');
+    const roleOptions = (current, locked) => {
+      const value = app.normalizeRole(current);
+      const opts = [['membro', 'Membro'], ['editor', 'Editor'], ['lider', 'Líder'], ['pastor', 'Administrador']];
+      return opts.map(([id, label]) => `<option value="${id}" ${value === id ? 'selected' : ''}>${label}</option>`).join('') + (locked ? '' : '');
+    };
+    const intro = canChangeRole
+      ? 'Defina o cargo de cada pessoa. <strong>Membro</strong> usa o app; <strong>Editor</strong> cuida de conteúdo; <strong>Líder</strong> cuida também de cultos, células, quizzes e aprovações; <strong>Administrador</strong> tem acesso total, incluindo Pix, IA e segurança.'
+      : 'Lista de membros da igreja. Apenas o administrador pode alterar cargos ou excluir cadastros.';
+
+    return `<section class="card">
+      <div class="section-head">
+        <div><h2>Usuários e cargos</h2><p class="muted">${intro}</p></div>
+        ${canManage ? '<button class="btn primary small" data-add-user="1">Adicionar usuário</button>' : ''}
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Membro</th><th>Contato</th><th>Cargo</th><th>Célula</th><th>Nota</th>${canManage ? '<th>Ações</th>' : ''}</tr></thead>
+        <tbody>${users.map(u => {
+          const fixedAdmin = app.isAdminEmail(u.email);
+          return `<tr>
+            <td><div class="row gap"><span>${app.avatarMarkup(u, 'avatar-sm')}</span><div><strong>${e(u.name)}</strong><br><small>${e(u.username || u.id)}</small></div></div></td>
+            <td>${e(u.email || '')}<br>${e(u.whatsapp || '')}</td>
+            <td>${canChangeRole && !fixedAdmin
+              ? `<select data-role-user="${e(u.id)}">${roleOptions(u.role)}</select>`
+              : `<span class="status ${app.normalizeRole(u.role) === 'pastor' ? 'approved' : ''}">${e(roleName(u.role))}</span>${fixedAdmin ? '<br><small class="muted">admin fixo</small>' : ''}`}</td>
+            <td>${e(cells[u.cellId] ? cells[u.cellId].name : '-')}</td>
+            <td>${e(u.note || '')}</td>
+            ${canManage ? `<td><button class="btn small" data-edit-path="users/${e(u.id)}">Editar</button> ${fixedAdmin ? '' : `<button class="btn small danger" data-delete-path="users/${e(u.id)}">Excluir</button>`}</td>` : ''}
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+      ${canChangeRole ? `<div class="card compact section"><h3>O que cada cargo pode fazer</h3><ul class="check-list">${
+        ['editor', 'lider', 'pastor'].map(role => {
+          const caps = app.capabilitiesFor(role);
+          const text = caps.includes('*')
+            ? 'Acesso total ao painel, incluindo Pix, IA, usuários e segurança.'
+            : caps.filter(c => c !== 'admin.access' && c !== 'admin.dashboard').map(c => app.CAPABILITY_LABELS[c] || c).join(' • ');
+          return `<li><strong>${e(roleName(role))}:</strong> ${e(text)}</li>`;
+        }).join('')
+      }<li><strong>Membro:</strong> usa o aplicativo, sem acesso ao painel.</li></ul></div>` : ''}
+    </section>`;
   }
 
   function posts() {
@@ -274,6 +350,9 @@
     const configured = Boolean(String(cfg.pixKey || '').trim());
 
     return `<div class="grid">
+      <section class="card compact" style="border-left:4px solid var(--primary)">
+        <p class="muted" style="margin:0">🔒 <strong>Área exclusiva do administrador.</strong> A chave Pix definida aqui é a conta que recebe todas as contribuições do app. Confira sempre no app do banco antes de divulgar.</p>
+      </section>
       <section class="grid four">
         <div class="card kpi"><div class="icon-bubble">💰</div><div><strong>${e(money(total))}</strong><span>total confirmado</span></div></div>
         <div class="card kpi"><div class="icon-bubble">📅</div><div><strong>${e(money(monthTotal))}</strong><span>este mês</span></div></div>
@@ -521,6 +600,9 @@
 
   function renderTab() {
     const map = { dashboard, geral, temas, conteudo, cultos, celulas, midia: midiaTab, usuarios, posts, devocionais, quizzes, pix: pixTab, ia: iaTab, paginas: paginasTab, mensagens: mensagensTab, seguranca: segurancaTab, json: jsonEditor, firebase: firebaseTab };
+    const entry = ALL_TABS.find(([id]) => id === activeTab);
+    // Trava dupla: mesmo que alguém force a aba, sem permissão não renderiza o conteúdo.
+    if (entry && !app.can(entry[2])) return deniedCard(entry[1].replace(/^[^\s]+\s/, ''));
     return (map[activeTab] || dashboard)();
   }
 
@@ -545,32 +627,54 @@
     };
   }
 
+  /** Caminhos que somente o pastor/admin pode gravar ou apagar. */
+  const ADMIN_ONLY_PATHS = /^(integrations|settings|users|audit)(\/|$)/;
+
+  function canWritePath(path) {
+    if (app.isAdmin()) return true;
+    if (ADMIN_ONLY_PATHS.test(String(path || ''))) return false;
+    return true;
+  }
+
+  function denyWrite(path) {
+    app.toast('🔒 Somente o administrador pode alterar "' + String(path).split('/')[0] + '".');
+    return false;
+  }
+
   function bind() {
     root.querySelectorAll('[data-go-tab]').forEach(btn => btn.onclick = () => { activeTab = btn.dataset.goTab; render(); });
-    root.querySelectorAll('[data-edit-path]').forEach(btn => btn.onclick = () => openJsonEditor(btn.dataset.editPath, app.getAt(btn.dataset.editPath, {})));
+    root.querySelectorAll('[data-edit-path]').forEach(btn => btn.onclick = () => {
+      if (!canWritePath(btn.dataset.editPath)) return denyWrite(btn.dataset.editPath);
+      openJsonEditor(btn.dataset.editPath, app.getAt(btn.dataset.editPath, {}));
+    });
     root.querySelectorAll('[data-delete-path]').forEach(btn => btn.onclick = async () => {
+      if (!canWritePath(btn.dataset.deletePath)) return denyWrite(btn.dataset.deletePath);
       if (!confirm('Excluir este item?')) return;
       await app.removeAt(btn.dataset.deletePath);
       app.toast('Item excluído.');
     });
     root.querySelectorAll('[data-add-collection]').forEach(btn => btn.onclick = () => {
       const path = btn.dataset.addCollection;
+      if (!canWritePath(path)) return denyWrite(path);
       const id = idFor(path.slice(0, 5));
       openJsonEditor(path + '/' + id, Object.assign({ id }, templates[path] || { id, title: 'Novo item' }));
     });
     const addMenu = root.querySelector('[data-add-menu]');
     if (addMenu) addMenu.onclick = () => {
+      if (!app.can('settings.identity')) return app.toast('🔒 Somente o administrador pode editar os menus.');
       const id = idFor('menu');
       openJsonEditor('settings/menus/' + id, { id, label: 'Novo menu', icon: '✨', page: 'home', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 99 });
     };
     const addUser = root.querySelector('[data-add-user]');
     if (addUser) addUser.onclick = () => {
+      if (!app.can('users.manage')) return app.toast('🔒 Somente o administrador pode cadastrar usuários.');
       const id = idFor('user');
       openJsonEditor('users/' + id, { id, name: 'Novo membro', username: '', email: '', password: '', whatsapp: '', phone: '', address: '', role: 'membro', city: '', cellId: '', avatarKey: 'dove', note: '', createdAt: new Date().toISOString() });
     };
     const settingsForm = root.querySelector('#settingsForm');
     if (settingsForm) settingsForm.onsubmit = async event => {
       event.preventDefault();
+      if (!app.can('settings.identity')) return app.toast('🔒 Somente o administrador pode alterar a identidade do app.');
       const data = Object.fromEntries(new FormData(settingsForm).entries());
       await app.updateAt('settings', {
         appName: data.appName,
@@ -588,11 +692,21 @@
       app.toast('Configurações salvas.');
     };
     root.querySelectorAll('[data-role-user]').forEach(select => select.onchange = async () => {
+      // Alterar cargo é privilégio exclusivo do administrador.
+      if (!app.can('users.role')) {
+        select.value = app.getAt('users/' + select.dataset.roleUser + '/role', 'membro');
+        return app.toast('🔒 Somente o administrador pode alterar cargos.');
+      }
+      const target = app.getAt('users/' + select.dataset.roleUser, {}) || {};
+      if (app.isAdminEmail(target.email) && select.value !== 'pastor') {
+        select.value = 'pastor';
+        return app.toast('Este email é administrador fixo do sistema e não pode ser rebaixado.');
+      }
       await app.updateAt('users/' + select.dataset.roleUser, { role: select.value });
-      app.toast('Cargo atualizado.');
+      app.toast('Cargo atualizado para ' + roleName(select.value) + '.');
     });
-    root.querySelectorAll('[data-approve-post]').forEach(btn => btn.onclick = () => app.approvePost(btn.dataset.approvePost, true));
-    root.querySelectorAll('[data-reject-post]').forEach(btn => btn.onclick = () => app.approvePost(btn.dataset.rejectPost, false));
+    root.querySelectorAll('[data-approve-post]').forEach(btn => btn.onclick = () => app.approvePost(btn.dataset.approvePost, true).catch(error => app.toast(error.message)));
+    root.querySelectorAll('[data-reject-post]').forEach(btn => btn.onclick = () => app.approvePost(btn.dataset.rejectPost, false).catch(error => app.toast(error.message)));
     const fullJson = root.querySelector('#fullJson');
     const saveFull = root.querySelector('#saveFullJson');
     if (saveFull) saveFull.onclick = async () => {
@@ -698,6 +812,8 @@
     const form = root.querySelector('#pixConfigForm');
     if (form) form.onsubmit = async event => {
       event.preventDefault();
+      // Pix é a área mais sensível do app: apenas o administrador grava.
+      if (!app.can('integrations.pix')) return app.toast('🔒 Somente o administrador pode alterar a chave Pix.');
       const data = Object.fromEntries(new FormData(form).entries());
       const parseList = value => String(value || '').split(',').map(item => item.trim()).filter(Boolean);
       await app.updateAt('integrations/pix', {
@@ -721,6 +837,7 @@
     const mpForm = root.querySelector('#mpConfigForm');
     if (mpForm) mpForm.onsubmit = async event => {
       event.preventDefault();
+      if (!app.can('integrations.pix')) return app.toast('🔒 Somente o administrador pode alterar os dados de recebimento.');
       const data = Object.fromEntries(new FormData(mpForm).entries());
       await app.updateAt('integrations/pix', {
         checkoutLink: String(data.checkoutLink || '').trim(),
@@ -768,6 +885,7 @@
     const form = root.querySelector('#aiConfigForm');
     if (form) form.onsubmit = async event => {
       event.preventDefault();
+      if (!app.can('integrations.ai')) return app.toast('🔒 Somente o administrador pode alterar a configuração da IA.');
       const data = Object.fromEntries(new FormData(form).entries());
       await app.updateAt('integrations/ai', {
         enabled: form.querySelector('[name="enabled"]').checked,
@@ -836,6 +954,7 @@
     const form = root.querySelector('#adminPasswordForm');
     if (form) form.onsubmit = async event => {
       event.preventDefault();
+      if (!app.can('security.manage')) return app.toast('🔒 Área exclusiva do administrador.');
       const data = Object.fromEntries(new FormData(form).entries());
       if (data.password !== data.confirmPassword) return app.toast('As senhas não conferem.');
       const strength = app.validateStrongPassword(data.password);

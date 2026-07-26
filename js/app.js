@@ -16,8 +16,15 @@
   const paletteMenu = document.getElementById('paletteMenu');
   const installBtn = document.getElementById('installBtn');
   const notificationBtn = document.getElementById('notificationBtn');
+  const drawerAdminLink = document.getElementById('drawerAdminLink');
+  const drawerProfile = document.getElementById('drawerProfile');
+  const drawerSession = document.getElementById('drawerSession');
+  const forgotPassword = document.getElementById('forgotPassword');
+  const passwordSetupModal = document.getElementById('passwordSetupModal');
+  const passwordSetupForm = document.getElementById('passwordSetupForm');
   let deferredInstall = null;
   let registering = false;
+  let passwordPromptShown = false;
 
   function currentPage() {
     return (location.hash || '#home').replace('#', '').split('?')[0] || 'home';
@@ -88,20 +95,71 @@
     if (modeBtn) modeBtn.onclick = () => { app.toggleTheme(); renderBrand(); renderPaletteMenu(); };
   }
 
+  function avatarHtmlFor(user) {
+    const avatar = app.avatarFor(user);
+    return /^https?:|^data:/i.test(avatar)
+      ? `<img src="${app.escapeHtml(avatar)}" alt="">`
+      : `<span class="avatar">${app.escapeHtml(avatar)}</span>`;
+  }
+
+  function roleLabel(user) {
+    const map = { pastor: 'Administrador', lider: 'Líder', editor: 'Editor', membro: 'Membro' };
+    return map[app.normalizeRole(user && user.role)] || 'Membro';
+  }
+
   function renderUser() {
     const user = app.state.user;
+
     if (!user) {
       loginOpen.innerHTML = 'Entrar';
+      loginOpen.title = 'Entrar na sua conta';
       loginOpen.onclick = () => openAuth(false);
+      if (drawerAdminLink) drawerAdminLink.hidden = true;
+      if (drawerProfile) drawerProfile.hidden = true;
+      if (drawerSession) {
+        drawerSession.innerHTML = '<button class="btn primary" type="button" id="drawerLogin">Entrar ou criar conta</button>';
+        drawerSession.querySelector('#drawerLogin').onclick = () => { closeDrawer(); openAuth(false); };
+      }
       return;
     }
-    const avatar = app.avatarFor(user);
-    const avatarHtml = /^https?:|^data:/i.test(avatar) ? `<img src="${app.escapeHtml(avatar)}" alt="">` : `<span>${app.escapeHtml(avatar)}</span>`;
-    loginOpen.innerHTML = `${avatarHtml}<span>${app.escapeHtml((user.name || 'Perfil').split(' ')[0])}</span>`;
-    loginOpen.onclick = () => {
-      if (confirm('Deseja sair da conta? Clique em Cancelar para abrir o perfil.')) app.signOut();
-      else navigate('perfil');
-    };
+
+    // Avatar no topo: abre direto a página de perfil (sem confirm de logout).
+    loginOpen.innerHTML = `${avatarHtmlFor(user)}<span>${app.escapeHtml((user.name || 'Perfil').split(' ')[0])}</span>`;
+    loginOpen.title = 'Abrir meu perfil';
+    loginOpen.onclick = () => navigate('perfil');
+
+    // Painel administrativo só aparece para quem tem permissão (admin, líder ou editor).
+    if (drawerAdminLink) drawerAdminLink.hidden = !app.can('admin.access');
+
+    if (drawerProfile) {
+      drawerProfile.hidden = false;
+      drawerProfile.innerHTML = `${avatarHtmlFor(user)}<span>${app.escapeHtml(user.name || 'Meu perfil')}<small>${app.escapeHtml(roleLabel(user))}</small></span>`;
+      drawerProfile.onclick = () => navigate('perfil');
+    }
+
+    if (drawerSession) {
+      drawerSession.innerHTML = `
+        <button class="btn ghost" type="button" id="drawerSwitch">🔁 Trocar conta</button>
+        <button class="btn danger ghost" type="button" id="drawerLogout">🚪 Sair</button>`;
+      drawerSession.querySelector('#drawerSwitch').onclick = async () => {
+        closeDrawer();
+        await app.signOut();
+        openAuth(false);
+      };
+      drawerSession.querySelector('#drawerLogout').onclick = async () => {
+        if (!confirm('Deseja sair da sua conta?')) return;
+        closeDrawer();
+        await app.signOut();
+      };
+    }
+  }
+
+  /** Convida quem entrou pelo Google a criar uma senha própria. */
+  function maybePromptPassword() {
+    if (!passwordSetupModal || passwordPromptShown) return;
+    if (!app.needsPasswordSetup()) return;
+    passwordPromptShown = true;
+    setTimeout(() => { try { passwordSetupModal.showModal(); } catch (_) {} }, 500);
   }
 
   function renderNotificationButton() {
@@ -225,14 +283,76 @@
       authForm.reset();
       restoreRememberedUser();
       authModal.close();
+      maybePromptPassword();
     } catch (error) {
       app.toast(error.message || 'Não foi possível entrar.');
+      // Erros com solução conhecida: guia a pessoa em vez de só mostrar o aviso.
+      if (error.code === 'imperio/use-google') {
+        setTimeout(() => {
+          if (confirm('Esta conta foi criada com o Google.\n\nDeseja entrar com o Google agora?')) googleLogin.click();
+        }, 400);
+      } else if (error.code === 'imperio/not-found') {
+        setTimeout(() => {
+          if (confirm('Não encontramos esta conta.\n\nDeseja criar uma conta agora?')) {
+            registering = true;
+            applyAuthMode();
+            const emailField = document.getElementById('authEmail');
+            if (emailField && error.email) emailField.value = error.email;
+          }
+        }, 400);
+      } else if (error.code === 'imperio/wrong-password' && forgotPassword) {
+        forgotPassword.classList.add('pulse');
+        setTimeout(() => forgotPassword.classList.remove('pulse'), 2400);
+      }
     }
   };
 
   googleLogin.onclick = async () => {
-    try { await app.signInGoogle(); authModal.close(); } catch (error) { app.toast(error.message || 'Falha no Google.'); }
+    try {
+      await app.signInGoogle();
+      authModal.close();
+      maybePromptPassword();
+    } catch (error) {
+      app.toast(error.message || 'Falha no Google.');
+    }
   };
+
+  // "Esqueci minha senha": envia link de redefinição para o email digitado.
+  if (forgotPassword) forgotPassword.onclick = async () => {
+    const field = document.getElementById('authIdentifier');
+    let identifier = (field && field.value.trim()) || '';
+    if (!identifier) identifier = prompt('Digite o email da sua conta para receber o link de redefinição:') || '';
+    if (!identifier.trim()) return;
+    forgotPassword.disabled = true;
+    try {
+      await app.resetPassword(identifier.trim());
+    } catch (error) {
+      app.toast(error.message || 'Não foi possível enviar o link agora.');
+    } finally {
+      forgotPassword.disabled = false;
+    }
+  };
+
+  // Criação de senha para contas que entraram pelo Google.
+  if (passwordSetupForm) {
+    passwordSetupForm.onsubmit = async event => {
+      event.preventDefault();
+      const password = document.getElementById('setupPassword').value;
+      const confirmPassword = document.getElementById('setupPasswordConfirm').value;
+      try {
+        await app.setAccountPassword(password, confirmPassword);
+        passwordSetupForm.reset();
+        passwordSetupModal.close();
+      } catch (error) {
+        app.toast(error.message || 'Não foi possível salvar a senha.');
+      }
+    };
+    const skip = document.getElementById('skipPasswordSetup');
+    if (skip) skip.onclick = () => {
+      passwordSetupModal.close();
+      app.toast('Sem problema — você pode criar a senha depois na página Perfil.');
+    };
+  }
 
   if (notificationBtn) {
     notificationBtn.onclick = async () => {
@@ -248,6 +368,9 @@
     if (event.data.action === 'navigate') navigate(event.data.page);
     if (event.data.action === 'login') openAuth(false);
     if (event.data.action === 'register') openAuth(true);
+    if (event.data.action === 'set-password' && passwordSetupModal) {
+      try { passwordSetupModal.showModal(); } catch (_) {}
+    }
   });
 
   window.addEventListener('beforeinstallprompt', event => {
@@ -275,6 +398,7 @@
     app.checkDueNotifications(false);
   });
   app.on('auth', () => { renderNav(); renderUser(); });
+  app.on('needs-password', () => maybePromptPassword());
   app.on('theme', renderBrand);
   app.on('palette', renderBrand);
 

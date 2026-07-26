@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#6f1025">
   <title>Admin — Igreja Imperial Batista</title>
+  <meta name="apple-mobile-web-app-title" content="Admin Imperial">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="admin-body">
@@ -37,10 +40,15 @@
         </div>
         <button class="icon-button" id="closeAdminDrawer" aria-label="Fechar menu">×</button>
       </div>
-      <nav id="adminMobileNav" class="mobile-nav"></nav>
-      <div class="row gap wrap" style="margin-top:auto">
-        <a class="chip" href="index.html">🏠 Ver app</a>
-        <button class="chip" id="adminMobileLogout" type="button">🚪 Sair</button>
+      <div class="drawer-scroll">
+        <nav id="adminMobileNav" class="mobile-nav"></nav>
+      </div>
+      <div class="drawer-foot">
+        <a class="drawer-admin" href="index.html">🏠 Voltar ao aplicativo</a>
+        <div class="drawer-session">
+          <button class="btn ghost" id="adminMobileSwitch" type="button">🔁 Trocar conta</button>
+          <button class="btn danger ghost" id="adminMobileLogout" type="button">🚪 Sair</button>
+        </div>
       </div>
     </div>
   </aside>

@@ -2,6 +2,55 @@
   'use strict';
 
   const roleWeight = { membro: 1, editor: 2, lider: 3, líder: 3, pastor: 4, admin: 4 };
+
+  // === Emails que SEMPRE entram como administrador (pastor), venha o login por senha ou Google. ===
+  const ADMIN_EMAILS = ['wesleystudio@gmail.com'];
+
+  /**
+   * Permissões por cargo.
+   * - membro: só usa o app, sem painel.
+   * - editor: cuida de conteúdo (notícias, avisos, mídia, devocionais, páginas).
+   * - lider: conteúdo + cultos, agenda, células, quizzes, aprovação de posts e mensagens.
+   * - pastor/admin: tudo, incluindo Pix, IA, usuários/cargos, segurança, Firebase e JSON.
+   * Áreas sensíveis (Pix, IA, segurança, Firebase, JSON, identidade/menus) são exclusivas do pastor/admin.
+   */
+  const CAPABILITIES = {
+    membro: [],
+    editor: [
+      'admin.access', 'admin.dashboard',
+      'content.news', 'content.media', 'content.pages', 'content.devotionals'
+    ],
+    lider: [
+      'admin.access', 'admin.dashboard',
+      'content.news', 'content.media', 'content.pages', 'content.devotionals',
+      'content.services', 'content.cells', 'content.quizzes',
+      'posts.approve', 'messages.read', 'users.view', 'donations.view'
+    ],
+    pastor: ['*']
+  };
+
+  const CAPABILITY_LABELS = {
+    'admin.access': 'Entrar no painel administrativo',
+    'admin.dashboard': 'Ver o resumo do painel',
+    'content.news': 'Notícias, avisos, atividades e datas',
+    'content.media': 'Mídia, pregações e planos de leitura',
+    'content.pages': 'Páginas personalizadas',
+    'content.devotionals': 'Versículos, palavra por sentimento e pedidos',
+    'content.services': 'Cultos e agenda',
+    'content.cells': 'Células e presença',
+    'content.quizzes': 'Quizzes e resultados',
+    'posts.approve': 'Aprovar ou recusar posts',
+    'messages.read': 'Ler mensagens e contatos',
+    'users.view': 'Ver a lista de membros',
+    'users.manage': 'Criar, editar e excluir usuários',
+    'users.role': 'Alterar cargos de usuários',
+    'donations.view': 'Ver relatório de contribuições',
+    'settings.identity': 'Identidade, menus e temas do app',
+    'integrations.pix': 'Chave Pix e recebimento de doações',
+    'integrations.ai': 'Configuração da IA',
+    'security.manage': 'Segurança, Firebase e JSON'
+  };
+
   const state = {
     ready: false,
     data: null,
@@ -180,7 +229,8 @@
       pix: {
         enabled: true,
         provider: 'mercadopago',
-        pixKey: '',
+        // Chave Pix inicial para teste — troque na aba "Pix/Doações" do painel (somente admin).
+        pixKey: 'wesleystudio@gmail.com',
         keyType: 'email',
         receiverName: 'IGREJA IMPERIAL BATISTA',
         city: 'SAO PAULO',
@@ -321,6 +371,14 @@
         if (result.settings.menus[key]) result.settings.menus[key].visible = true;
       });
     } catch (_) {}
+    // Garante a chave Pix inicial de teste quando o banco ainda está sem chave cadastrada.
+    try {
+      if (!result.integrations.pix) result.integrations.pix = clone(defaultData.integrations.pix);
+      if (!String(result.integrations.pix.pixKey || '').trim()) {
+        result.integrations.pix.pixKey = defaultData.integrations.pix.pixKey;
+        result.integrations.pix.keyType = defaultData.integrations.pix.keyType;
+      }
+    } catch (_) {}
     // Garante chave DeepSeek padrão se não estiver configurada (evita "não aparece" ao pedir versículo)
     try {
       if (!result.integrations.ai) result.integrations.ai = clone(defaultData.integrations.ai);
@@ -340,7 +398,12 @@
       role: 'pastor',
       createdAt: storedAdmin.createdAt || adminDefaults.createdAt
     });
-    Object.keys(result.users).forEach(key => sanitizeStoredUser(result.users[key]));
+    Object.keys(result.users).forEach(key => {
+      sanitizeStoredUser(result.users[key]);
+      // Emails de administrador são sempre pastor, mesmo que o cargo tenha sido alterado no banco.
+      const user = result.users[key];
+      if (user && ADMIN_EMAILS.includes(String(user.email || '').trim().toLowerCase())) user.role = 'pastor';
+    });
     return result;
   }
 
@@ -405,13 +468,53 @@
     return window.ImperioFirebase.push('appData/' + String(path || '').replace(/^\/+/, ''), value);
   }
 
-  function currentRole() { return state.user ? (state.user.role || 'membro') : 'membro'; }
-  function hasRole(minRole) { return (roleWeight[currentRole()] || 1) >= (roleWeight[minRole] || 1); }
+  /** Normaliza variações de cargo ("líder", "admin", "Pastor") para as chaves internas. */
+  function normalizeRole(role) {
+    const value = normalizeIdentifier(role || 'membro');
+    if (value === 'admin' || value === 'administrador' || value === 'pastor') return 'pastor';
+    if (value === 'lider' || value === 'líder') return 'lider';
+    if (value === 'editor') return 'editor';
+    return 'membro';
+  }
+
+  /** Emails listados em ADMIN_EMAILS são sempre pastor/admin, mesmo que o banco diga outra coisa. */
+  function isAdminEmail(email) {
+    const value = normalizeIdentifier(email);
+    if (!value) return false;
+    return ADMIN_EMAILS.includes(value);
+  }
+
+  function currentRole() {
+    if (!state.user) return 'membro';
+    if (isAdminEmail(state.user.email) || isAdminEmail(state.authUser && state.authUser.email)) return 'pastor';
+    return normalizeRole(state.user.role);
+  }
+
+  function hasRole(minRole) { return (roleWeight[currentRole()] || 1) >= (roleWeight[normalizeRole(minRole)] || 1); }
+
   function roleAllowed(roles) {
     if (!roles || !roles.length) return true;
     const userRole = currentRole();
-    return roles.includes(userRole) || roles.some(role => hasRole(role));
+    const normalized = (Array.isArray(roles) ? roles : [roles]).map(normalizeRole);
+    return normalized.includes(userRole) || normalized.some(role => hasRole(role));
   }
+
+  /** Lista de permissões do cargo informado (ou do usuário atual). */
+  function capabilitiesFor(role) {
+    const key = normalizeRole(role || currentRole());
+    return CAPABILITIES[key] || [];
+  }
+
+  /** Verifica se o usuário atual pode executar determinada ação do painel. */
+  function can(capability) {
+    if (!state.user) return false;
+    const caps = capabilitiesFor();
+    if (caps.includes('*')) return true;
+    return caps.includes(capability);
+  }
+
+  /** Verdadeiro apenas para pastor/admin — usado nas áreas sensíveis (Pix, IA, segurança). */
+  function isAdmin() { return currentRole() === 'pastor'; }
 
   function avatarFor(profile) {
     if (!profile) return '';
@@ -432,10 +535,34 @@
     return Object.values(users).find(u => normalizeIdentifier(u.email) === norm) || null;
   }
 
+  /** Se o email for de administrador, garante o cargo pastor gravado no banco. */
+  async function enforceAdminEmail(profile) {
+    if (!profile || !isAdminEmail(profile.email)) return profile;
+    if (normalizeRole(profile.role) === 'pastor') return profile;
+    const upgraded = Object.assign({}, profile, { role: 'pastor', updatedAt: now() });
+    try { await updateAt('users/' + profile.id, { role: 'pastor', updatedAt: upgraded.updatedAt }); } catch (_) {}
+    return upgraded;
+  }
+
+  /** Lê o registro do usuário direto da fonte (o cache local pode estar atrasado logo após um cadastro). */
+  async function fetchStoredUser(id) {
+    if (!id) return null;
+    try {
+      const fresh = await window.ImperioFirebase.get('appData/users/' + id);
+      if (fresh) return fresh;
+    } catch (_) {}
+    return getAt('users/' + id, null);
+  }
+
   async function ensureProfile(authUser) {
     if (!authUser) return null;
     const userPath = 'users/' + authUser.uid;
-    let profile = getAt(userPath, null);
+    // Busca direto no banco: evita recriar (e apagar a senha de) um perfil que acabou de ser gravado.
+    let profile = await fetchStoredUser(authUser.uid);
+    if (profile && profile.linkedTo) {
+      const canonical = await fetchStoredUser(profile.linkedTo);
+      if (canonical) profile = canonical;
+    }
 
     // === VINCULAÇÃO POR EMAIL: se logou com Google e já existe conta com mesmo email (ex: admin), usa a conta existente ===
     if (!profile) {
@@ -450,11 +577,20 @@
           lastLoginProvider: authUser.providerId || 'google',
           lastLoginAt: now()
         });
+        if (isAdminEmail(profile.email)) profile.role = 'pastor';
         // Se o uid do auth for diferente do id existente (ex: Google uid vs pastor_demo), mescla:
         // 1) Atualiza o registro original com foto Google se não tinha
         // 2) Cria também um alias users/{authUser.uid} apontando para o mesmo perfil para consistência futura
         //    (mas o app usará o perfil original com role correto)
-        await setAt('users/' + existingByEmail.id, profile);
+        // Merge (update) preserva passwordHash e demais campos já existentes.
+        await updateAt('users/' + existingByEmail.id, {
+          photoURL: profile.photoURL,
+          displayName: profile.displayName,
+          role: profile.role,
+          updatedAt: profile.updatedAt,
+          lastLoginProvider: profile.lastLoginProvider,
+          lastLoginAt: profile.lastLoginAt
+        });
         if (existingByEmail.id !== authUser.uid) {
           // Cria alias opcional para facilitar buscas futuras por uid
           const alias = Object.assign({}, profile, { id: authUser.uid, linkedTo: existingByEmail.id });
@@ -470,25 +606,32 @@
       profile = {
         id: authUser.uid,
         name: authUser.displayName || (authUser.email || 'Membro').split('@')[0],
-        username: '',
+        username: suggestUsername(authUser.email, authUser.displayName),
         email: authUser.email || '',
         whatsapp: '',
         phone: '',
         address: '',
-        role: 'membro',
+        role: isAdminEmail(authUser.email) ? 'pastor' : 'membro',
         city: '',
         cellId: '',
         avatarKey: 'dove',
         photoURL: authUser.photoURL || '',
         providerId: authUser.providerId || 'password',
+        // Contas criadas pelo Google ainda não têm senha própria no app.
+        needsPassword: /google/i.test(authUser.providerId || '') && !authUser.hasPassword,
         createdAt: now()
       };
-      await setAt(userPath, profile);
+      // Merge para nunca sobrescrever campos que a camada de auth já tenha gravado (ex: passwordHash).
+      await updateAt(userPath, profile);
+      const stored = await fetchStoredUser(authUser.uid);
+      if (stored) profile = Object.assign({}, profile, stored);
     } else {
       const updates = {};
       if (authUser.photoURL && !profile.photoURL) updates.photoURL = authUser.photoURL;
       if (authUser.displayName && !profile.name) updates.name = authUser.displayName;
       if (authUser.email && !profile.email) updates.email = authUser.email;
+      if (!profile.username) updates.username = suggestUsername(profile.email || authUser.email, profile.name || authUser.displayName);
+      if (isAdminEmail(profile.email || authUser.email) && normalizeRole(profile.role) !== 'pastor') updates.role = 'pastor';
       if (Object.keys(updates).length) {
         await updateAt(userPath, updates);
         profile = Object.assign({}, profile, updates);
@@ -497,8 +640,24 @@
     return profile;
   }
 
+  /** Cria um nome de usuário livre a partir do email/nome (usado no login Google). */
+  function suggestUsername(email, displayName) {
+    const base = String(email || '').split('@')[0] || String(displayName || '').trim() || 'membro';
+    let candidate = base.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]/g, '.').replace(/\.+/g, '.').replace(/^\.|\.$/g, '').slice(0, 20).toLowerCase();
+    if (candidate.length < 3) candidate = 'membro' + candidate;
+    const users = asArray(getAt('users', {}));
+    let unique = candidate;
+    let counter = 1;
+    while (users.some(user => normalizeIdentifier(user.username) === unique)) {
+      unique = candidate.slice(0, 18) + counter;
+      counter += 1;
+    }
+    return unique;
+  }
+
   async function refreshProfile() {
-    state.user = await ensureProfile(state.authUser);
+    const profile = await ensureProfile(state.authUser);
+    state.user = await enforceAdminEmail(profile);
     emit('auth', state.user);
     emit('data', state.data);
     return state.user;
@@ -528,6 +687,7 @@
           const canonical = getAt('users/' + profile.linkedTo, null);
           if (canonical) profile = canonical;
         }
+        if (profile && isAdminEmail(profile.email || state.authUser.email)) profile = Object.assign({}, profile, { role: 'pastor' });
         state.user = profile || state.user;
       }
       applyTheme();
@@ -590,10 +750,44 @@
     const login = resolveLoginIdentifier(identifier);
     const user = await window.ImperioFirebase.Auth.signInEmail(login, password);
     state.authUser = user;
-    state.user = await ensureProfile(user);
+    state.user = await enforceAdminEmail(await ensureProfile(user));
     emit('auth', state.user);
     toast('Login realizado com sucesso.');
     return state.user;
+  }
+
+  /** Envia o email de redefinição de senha (usa o email do login digitado, se necessário). */
+  async function resetPassword(identifier) {
+    const login = resolveLoginIdentifier(identifier);
+    if (!isEmail(login)) throw new Error('Informe um email válido para receber o link de redefinição.');
+    await window.ImperioFirebase.Auth.sendPasswordReset(login);
+    toast('Enviamos um link de redefinição para ' + login + '. Confira sua caixa de entrada e o spam.');
+    return true;
+  }
+
+  /** Define uma senha para quem entrou pelo Google e ainda não tinha senha própria. */
+  async function setAccountPassword(password, confirmPassword) {
+    if (!state.user) throw new Error('Entre na sua conta primeiro.');
+    if (String(password) !== String(confirmPassword)) throw new Error('As senhas não conferem.');
+    const strength = validateStrongPassword(password);
+    if (!strength.valid) throw new Error(strength.message);
+    await window.ImperioFirebase.Auth.setPassword(password);
+    await updateAt('users/' + state.user.id, { needsPassword: false, hasPassword: true, updatedAt: now() });
+    state.user = Object.assign({}, state.user, { needsPassword: false, hasPassword: true });
+    emit('auth', state.user);
+    toast('Senha definida! Agora você também pode entrar com email e senha.');
+    return true;
+  }
+
+  /** Indica se a conta atual entrou pelo Google e ainda precisa criar uma senha. */
+  function needsPasswordSetup() {
+    if (!state.user) return false;
+    if (state.user.hasPassword) return false;
+    if (state.user.needsPassword) return true;
+    const auth = state.authUser;
+    if (!auth) return false;
+    if (auth.hasPassword) return false;
+    return /google/i.test(auth.providerId || '') || (auth.providers || []).some(item => /google/i.test(item));
   }
 
   async function registerEmail(details, emailArg, passwordArg, confirmArg) {
@@ -620,14 +814,20 @@
     state.authUser = user;
     state.user = await ensureProfile(user);
     if (state.user) {
-      state.user = Object.assign({}, state.user, {
+      const changes = {
         name: payload.name,
         username: payload.username,
         email: payload.email,
         avatarKey: state.user.avatarKey || 'dove',
+        role: isAdminEmail(payload.email) ? 'pastor' : (state.user.role || 'membro'),
+        hasPassword: true,
+        needsPassword: false,
         updatedAt: now()
-      });
-      await setAt('users/' + state.user.id, state.user);
+      };
+      // IMPORTANTE: updateAt (merge) e não setAt — setAt apagava o passwordHash
+      // recém-gravado pela camada de autenticação e quebrava o login seguinte.
+      await updateAt('users/' + state.user.id, changes);
+      state.user = Object.assign({}, state.user, changes);
     }
     emit('auth', state.user);
     toast('Conta criada com sucesso.');
@@ -637,9 +837,14 @@
   async function signInGoogle() {
     const user = await window.ImperioFirebase.Auth.signInGoogle();
     state.authUser = user;
-    state.user = await ensureProfile(user);
+    state.user = await enforceAdminEmail(await ensureProfile(user));
     emit('auth', state.user);
-    toast('Login com Google realizado.');
+    if (needsPasswordSetup()) {
+      toast('Bem-vindo! Defina uma senha no seu perfil para também entrar sem o Google.');
+      emit('needs-password', state.user);
+    } else {
+      toast('Login com Google realizado.');
+    }
     return state.user;
   }
 
@@ -1115,6 +1320,14 @@
     hasRole,
     roleAllowed,
     currentRole,
+    normalizeRole,
+    isAdmin,
+    isAdminEmail,
+    can,
+    capabilitiesFor,
+    CAPABILITIES,
+    CAPABILITY_LABELS,
+    ADMIN_EMAILS,
     visibleMenus,
     avatarFor,
     avatarMarkup,
@@ -1143,6 +1356,9 @@
     registerEmail,
     signInGoogle,
     signOut,
+    resetPassword,
+    setAccountPassword,
+    needsPasswordSetup,
     updateProfile,
     markPresence,
     submitPost,
