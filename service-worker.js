@@ -1,4 +1,4 @@
-const CACHE_NAME = 'imperio-batista-v4';
+const CACHE_NAME = 'imperio-batista-v5';
 const ASSETS = [
   './', './index.html', './admin.html', './manifest.json', './css/style.css',
   './js/vendor-qrcode.js', './js/security.js', './js/firebase.js', './js/core.js', './js/editor.js', './js/ai.js', './js/pix.js', './js/pages.js', './js/app.js', './js/admin.js', './js/page-bridge.js',

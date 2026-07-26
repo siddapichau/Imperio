@@ -1018,3 +1018,105 @@ tr:last-child td { border-bottom: 0; }
 
 /* Garante que temas funcionem mesmo se logo custom vazia */
 .theme-preview-item img { background: var(--surface-2); padding: 4px; }
+
+/* ==========================================================================
+   Ajustes solicitados: tema nos iframes, home, membros, perfil e mídia
+   ========================================================================== */
+.hero-verse {
+  display: grid;
+  gap: 6px;
+  max-width: 760px;
+  margin: 18px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.11);
+  backdrop-filter: blur(8px);
+}
+.hero-verse strong { color: var(--accent); }
+.hero-verse span { color: rgba(255,255,255,.92); font-weight: 800; line-height: 1.35; }
+.hero-verse em { color: rgba(255,255,255,.78); font-style: normal; font-weight: 700; }
+
+.member-filter-card { display: grid; gap: 12px; }
+.member-role-filters { margin: 0; }
+.member-role-filters .chip small { color: inherit; opacity: .72; margin-left: 4px; }
+.member-search-grid { display: grid; grid-template-columns: 1.4fr .8fr; gap: 12px; align-items: end; }
+.member-card { display: grid; gap: 14px; }
+.member-card[hidden] { display: none !important; }
+.member-top { display: flex; gap: 14px; align-items: center; }
+.member-top .avatar.large { width: 78px; height: 78px; border-radius: 26px; }
+.member-info { display: grid; gap: 8px; }
+.member-info p { margin: 0; }
+.member-info a { color: var(--primary); text-decoration: underline; font-weight: 900; }
+
+.profile-photo-editor { display: grid; gap: 10px; }
+.profile-photo-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.profile-photo-preview {
+  width: 124px;
+  min-height: 124px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--border);
+  border-radius: 34px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.profile-photo-preview .avatar.large { width: 112px; height: 112px; }
+.profile-photo-preview img { width: 112px; height: 112px; object-fit: cover; border-radius: 32px; }
+
+.media-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 12px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.12);
+}
+.media-thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform .22s ease, opacity .22s ease; }
+.media-thumb:hover img { transform: scale(1.04); opacity: .82; }
+.play-badge {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 88%, #000);
+  color: #fff;
+  font-size: 1.35rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,.28);
+}
+.media-category {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.62);
+  color: #fff;
+  font-weight: 900;
+  font-size: .78rem;
+}
+.media-modal-card .embed-block { margin-top: 4px; }
+
+@media (max-width: 720px) {
+  .member-search-grid { grid-template-columns: 1fr; }
+  .member-top { align-items: flex-start; }
+  .profile-photo-row { align-items: stretch; }
+  .profile-photo-preview { width: 100%; }
+}
+
+/* Página membros simplificada: só identificação essencial + médias */
+.member-summary { display: grid; gap: 8px; }
+.member-summary h3 { margin: 0; }
+.member-metrics { display: grid; gap: 12px; }
+.member-metric { display: grid; gap: 6px; }
+.member-metric .progress-bar { margin: 0; }
