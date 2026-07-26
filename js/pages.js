@@ -286,7 +286,75 @@
     const stats = app.statsForUser(me.id);
     const cells = list('cells');
     const avatarButtons = Object.keys(app.avatarMap).map(key => `<button class="avatar-option ${me.avatarKey === key ? 'active' : ''}" type="button" data-avatar="${e(key)}"><span class="avatar row center" style="font-size:2rem">${app.avatarMap[key]}</span></button>`).join('');
-    root.innerHTML = `<div class="page-container"><section class="card highlight"><div class="row gap wrap between"><div class="row gap"><span>${app.avatarMarkup(me, 'large')}</span><div><h1>${e(me.name)}</h1><p class="muted">${e(me.email || '')}</p><span class="status approved">${e(me.role || 'membro')}</span></div></div><button class="btn ghost" data-logout="1">Sair</button></div></section><section class="section grid four"><div class="card kpi"><div class="icon-bubble">⛪</div><div><strong>${stats.presence}</strong><span>presenças em cultos</span></div></div><div class="card kpi"><div class="icon-bubble">🏡</div><div><strong>${stats.cellPresence}</strong><span>presenças em células</span></div></div><div class="card kpi"><div class="icon-bubble">🧠</div><div><strong>${stats.quizzes}</strong><span>quizzes feitos</span></div></div><div class="card kpi"><div class="icon-bubble">✅</div><div><strong>${stats.quizPercent}%</strong><span>acertos</span></div></div></section><section class="section card"><h2>Meus dados</h2><form id="profileForm" class="form-grid"><label>Nome<input name="name" value="${e(me.name || '')}" required></label><label>Nome de usuário<input name="username" value="${e(me.username || '')}"></label><label>Email<input name="email" type="email" value="${e(me.email || '')}"></label><label>WhatsApp<input name="whatsapp" value="${e(me.whatsapp || '')}"></label><label>Telefone<input name="phone" value="${e(me.phone || '')}"></label><label>Cidade<input name="city" value="${e(me.city || '')}"></label><label class="full">Endereço<input name="address" value="${e(me.address || '')}"></label><label>Célula<select name="cellId"><option value="">Sem célula</option>${cells.map(c => `<option value="${e(c.id)}" ${me.cellId === c.id ? 'selected' : ''}>${e(c.name)}</option>`).join('')}</select></label><label>Cargo<input value="${e(me.role || 'membro')}" disabled></label><div class="full"><h3>Avatar do site</h3><div class="row gap wrap">${avatarButtons}</div><input type="hidden" name="avatarKey" value="${e(me.avatarKey || 'dove')}"></div><div class="full"><button class="btn primary" type="submit">Salvar perfil</button></div></form></section></div>`;
+    const roleNames = { pastor: 'Administrador', lider: 'Líder', editor: 'Editor', membro: 'Membro' };
+    const roleLabel = roleNames[app.normalizeRole(me.role)] || 'Membro';
+    const needsPassword = app.needsPasswordSetup();
+    const canAdmin = app.can('admin.access');
+
+    root.innerHTML = `<div class="page-container">
+      <section class="card highlight">
+        <div class="row gap wrap between">
+          <div class="row gap">
+            <span>${app.avatarMarkup(me, 'large')}</span>
+            <div>
+              <h1>${e(me.name)}</h1>
+              <p class="muted">${e(me.email || '')}${me.username ? ' • @' + e(me.username) : ''}</p>
+              <span class="status approved">${e(roleLabel)}</span>
+            </div>
+          </div>
+          <div class="row gap wrap">
+            ${canAdmin ? '<a class="btn ghost" href="admin.html">⚙️ Painel administrativo</a>' : ''}
+            <button class="btn danger ghost" data-logout="1">Sair</button>
+          </div>
+        </div>
+      </section>
+
+      ${needsPassword ? `<section class="section card highlight">
+        <span class="badge">🔐 Segurança da conta</span>
+        <h2>Crie uma senha para sua conta</h2>
+        <p class="muted">Você entrou com o Google. Defina uma senha para também poder entrar com email e senha, mesmo sem o Google.</p>
+        <form id="passwordForm" class="form-grid">
+          <label>Nova senha
+            <span class="password-field">
+              <input name="password" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required>
+              <button class="field-icon" type="button" data-toggle-pass="1" aria-label="Mostrar senha">👁️</button>
+            </span>
+          </label>
+          <label>Confirmar senha
+            <span class="password-field">
+              <input name="confirmPassword" type="password" autocomplete="new-password" placeholder="Repita a senha" required>
+              <button class="field-icon" type="button" data-toggle-pass="1" aria-label="Mostrar senha">👁️</button>
+            </span>
+          </label>
+          <p class="help-text full">Use no mínimo 8 caracteres com letra maiúscula, minúscula, número e símbolo.</p>
+          <div class="full"><button class="btn primary" type="submit">Salvar senha</button></div>
+        </form>
+      </section>` : ''}
+
+      <section class="section grid four">
+        <div class="card kpi"><div class="icon-bubble">⛪</div><div><strong>${stats.presence}</strong><span>presenças em cultos</span></div></div>
+        <div class="card kpi"><div class="icon-bubble">🏡</div><div><strong>${stats.cellPresence}</strong><span>presenças em células</span></div></div>
+        <div class="card kpi"><div class="icon-bubble">🧠</div><div><strong>${stats.quizzes}</strong><span>quizzes feitos</span></div></div>
+        <div class="card kpi"><div class="icon-bubble">✅</div><div><strong>${stats.quizPercent}%</strong><span>acertos</span></div></div>
+      </section>
+
+      <section class="section card">
+        <h2>Meus dados</h2>
+        <form id="profileForm" class="form-grid">
+          <label>Nome<input name="name" value="${e(me.name || '')}" required></label>
+          <label>Nome de usuário<input name="username" value="${e(me.username || '')}"></label>
+          <label>Email<input name="email" type="email" value="${e(me.email || '')}"></label>
+          <label>WhatsApp<input name="whatsapp" value="${e(me.whatsapp || '')}"></label>
+          <label>Telefone<input name="phone" value="${e(me.phone || '')}"></label>
+          <label>Cidade<input name="city" value="${e(me.city || '')}"></label>
+          <label class="full">Endereço<input name="address" value="${e(me.address || '')}"></label>
+          <label>Célula<select name="cellId"><option value="">Sem célula</option>${cells.map(c => `<option value="${e(c.id)}" ${me.cellId === c.id ? 'selected' : ''}>${e(c.name)}</option>`).join('')}</select></label>
+          <label>Cargo<input value="${e(roleLabel)}" disabled></label>
+          <div class="full"><h3>Avatar do site</h3><div class="row gap wrap">${avatarButtons}</div><input type="hidden" name="avatarKey" value="${e(me.avatarKey || 'dove')}"></div>
+          <div class="full"><button class="btn primary" type="submit">Salvar perfil</button></div>
+        </form>
+      </section>
+    </div>`;
   }
 
   function renderPostar(ctx) {
@@ -658,6 +726,29 @@
       const values = Object.fromEntries(new FormData(profileForm).entries());
       try { await app.updateProfile(values); } catch (error) { app.toast(error.message); }
     };
+
+    // Definir senha para quem entrou pelo Google e ainda não tem senha própria.
+    const passwordForm = doc.getElementById('passwordForm');
+    if (passwordForm) {
+      passwordForm.onsubmit = async event => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(passwordForm).entries());
+        try {
+          await app.setAccountPassword(values.password, values.confirmPassword);
+          passwordForm.reset();
+          renderEmbeddedPage('perfil', doc);
+        } catch (error) { app.toast(error.message); }
+      };
+      passwordForm.querySelectorAll('[data-toggle-pass]').forEach(btn => {
+        btn.onclick = () => {
+          const input = btn.parentElement.querySelector('input');
+          if (!input) return;
+          const showing = input.type === 'text';
+          input.type = showing ? 'password' : 'text';
+          btn.textContent = showing ? '👁️' : '🙈';
+        };
+      });
+    }
 
     bindPostForm(ctx);
     bindPrayerForm(ctx);

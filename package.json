@@ -1,6 +1,6 @@
 {
-  "name": "imperio-batista-app",
-  "version": "1.0.0",
+  "name": "igreja-imperial-batista",
+  "version": "1.1.0",
   "private": true,
   "description": "PWA/APK da Igreja Imperial Batista com admin editável e Firebase Realtime Database.",
   "scripts": {
@@ -9,10 +9,13 @@
     "cap:init": "npx cap init \"Igreja Imperial Batista\" br.com.imperialbatista.app --web-dir .",
     "cap:add:android": "npx cap add android",
     "cap:sync": "npx cap sync android",
-    "cap:open:android": "npx cap open android"
+    "cap:icons": "npx @capacitor/assets generate --android --iconBackgroundColor '#6f1025' --iconBackgroundColorDark '#14070c' --splashBackgroundColor '#fbf3f5' --splashBackgroundColorDark '#14070c'",
+    "cap:open:android": "npx cap open android",
+    "android:build": "npm run cap:sync && npm run cap:icons && cd android && ./gradlew assembleRelease"
   },
   "devDependencies": {
     "@capacitor/android": "latest",
+    "@capacitor/assets": "latest",
     "@capacitor/cli": "latest",
     "@capacitor/core": "latest"
   }

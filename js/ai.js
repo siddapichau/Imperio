@@ -93,7 +93,8 @@
   async function callDeepSeek(feelingText) {
     const cfg = config();
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 25000);
+    // 25s costuma ser suficiente; acima disso o membro fica esperando demais.
+    const timer = setTimeout(() => controller.abort(), Number(cfg.timeoutMs || 25000));
     try {
       const response = await fetch(cfg.endpoint || 'https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -127,6 +128,14 @@
     }
   }
 
+  /** Nunca deixa uma promessa travar a resposta da IA (Firebase offline não resolve o set). */
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error((label || 'Operação') + ' demorou demais.')), ms))
+    ]);
+  }
+
   async function saveHistory(feelingText, answer) {
     if (config().saveHistory === false) return;
     const user = app.state.user;
@@ -143,7 +152,12 @@
       source: answer.source,
       createdAt: new Date().toISOString()
     };
-    try { await app.setAt('aiVerses/' + record.id, record); } catch (error) { console.warn('Histórico da IA não salvo:', error); }
+    // Salvar o histórico NUNCA pode impedir o versículo de aparecer para a pessoa.
+    try {
+      await withTimeout(app.setAt('aiVerses/' + record.id, record), 6000, 'Salvar histórico');
+    } catch (error) {
+      console.warn('Histórico da IA não salvo:', error);
+    }
     return record;
   }
 
@@ -165,19 +179,37 @@
         bumpUsage();
       } catch (error) {
         console.warn('[ImperioAI]', error);
-        warning = 'A IA está indisponível agora — trouxemos uma palavra da nossa biblioteca.';
+        // Explica de forma simples por que a IA não respondeu, sem assustar o membro.
+        const detail = String((error && error.message) || '');
+        if (/aborted|abort/i.test(detail)) warning = 'A IA demorou para responder — trouxemos uma palavra da nossa biblioteca.';
+        else if (/Failed to fetch|NetworkError|network/i.test(detail)) warning = 'Sem conexão com a IA agora — trouxemos uma palavra da nossa biblioteca.';
+        else if (/401|403/.test(detail)) warning = 'A chave da IA precisa ser revista no painel — por enquanto, uma palavra da nossa biblioteca.';
+        else if (/429/.test(detail)) warning = 'A IA está com muitos pedidos agora — trouxemos uma palavra da nossa biblioteca.';
+        else warning = 'A IA está indisponível agora — trouxemos uma palavra da nossa biblioteca.';
       }
     } else if (isEnabled() && !withinLimit()) {
       warning = 'Você atingiu o limite diário de consultas à IA. Aqui está uma palavra da nossa biblioteca.';
     }
 
-    if (!answer) answer = localAnswer(text);
+    // Garante que SEMPRE exista um versículo válido para exibir, mesmo se a IA devolver algo incompleto.
+    if (!answer || !answer.verse || !answer.reference) {
+      const fallback = localAnswer(text);
+      answer = Object.assign({}, fallback, answer || {});
+      if (!answer.verse) answer.verse = fallback.verse;
+      if (!answer.reference) answer.reference = fallback.reference;
+      if (!answer.message) answer.message = fallback.message;
+      if (!answer.prayer) answer.prayer = fallback.prayer;
+      if (!answer.theme) answer.theme = fallback.theme;
+      if (!answer.source) answer.source = 'local';
+    }
+
     answer.warning = warning;
     answer.risk = risk;
     if (risk) {
       answer.riskMessage = 'Percebemos que seu momento é delicado. Você importa muito para Deus e para esta igreja. Fale com nossa liderança agora e, se precisar de ajuda imediata, ligue 188 (CVV, 24h, gratuito).';
     }
-    await saveHistory(text, answer);
+    // History is best-effort: falha ao salvar não pode esconder a resposta.
+    try { await saveHistory(text, answer); } catch (error) { console.warn('[ImperioAI] histórico', error); }
     return answer;
   }
 

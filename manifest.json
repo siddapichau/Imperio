@@ -1,14 +1,20 @@
 {
+  "id": "/imperio-batista/",
   "name": "Igreja Imperial Batista",
-  "short_name": "Imperio Batista",
+  "short_name": "Imperial Batista",
   "description": "Aplicativo da Igreja Imperial Batista: cultos, células, presença, agenda, devocionais com IA, oração, dízimo por Pix, notícias e quizzes.",
   "start_url": "index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait-primary",
   "background_color": "#fbf3f5",
   "theme_color": "#6f1025",
   "lang": "pt-BR",
+  "dir": "ltr",
   "categories": [
     "lifestyle",
     "education",
@@ -18,13 +24,50 @@
     {
       "src": "assets/favicon.png",
       "sizes": "64x64",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "assets/logo.png",
+      "src": "assets/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -35,8 +78,9 @@
       "url": "index.html#dizimo",
       "icons": [
         {
-          "src": "assets/favicon.png",
-          "sizes": "64x64"
+          "src": "assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -47,8 +91,9 @@
       "url": "index.html#versiculo",
       "icons": [
         {
-          "src": "assets/favicon.png",
-          "sizes": "64x64"
+          "src": "assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -59,8 +104,9 @@
       "url": "index.html#oracao",
       "icons": [
         {
-          "src": "assets/favicon.png",
-          "sizes": "64x64"
+          "src": "assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -71,8 +117,9 @@
       "url": "index.html#agenda",
       "icons": [
         {
-          "src": "assets/favicon.png",
-          "sizes": "64x64"
+          "src": "assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }

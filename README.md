@@ -51,6 +51,53 @@ Aplicativo/site PWA para a Igreja Imperial Batista, pronto para publicar como si
 | 🧩 JSON | Exportar/importar todo o conteúdo |
 | 🔥 Firebase | Credenciais Web do Firebase |
 
+## Cargos e permissões
+
+O painel mostra **apenas** as abas que o cargo da pessoa permite. Áreas sensíveis (Pix, IA,
+Segurança, JSON, Firebase, identidade e menus) são **exclusivas do administrador**, e a trava
+vale tanto para a interface quanto para a gravação dos dados.
+
+| Cargo | O que pode fazer no painel |
+| --- | --- |
+| **Membro** | Não acessa o painel. Usa apenas o aplicativo. |
+| **Editor** | Notícias, avisos, atividades, datas, mídia, devocionais e páginas. |
+| **Líder** | Tudo do editor **+** cultos, agenda, células, quizzes, aprovação de posts, mensagens e lista de membros. |
+| **Administrador** (pastor) | Acesso total, incluindo **Pix**, **IA**, **usuários/cargos**, **segurança**, **Firebase** e **JSON**. |
+
+O email `wesleystudio@gmail.com` está registrado como **administrador fixo** em `js/core.js`
+(`ADMIN_EMAILS`): ele sempre entra como pastor/admin — por senha ou pelo Google — e não pode ser
+rebaixado pela tela de usuários. Para adicionar outro administrador fixo, inclua o email nessa lista.
+
+## Login e senha
+
+- Entrada por **email ou nome de usuário** + senha, ou pelo **Google**.
+- Entrando com o Google em um email que já existe, o app abre **a mesma conta** e mantém o cargo.
+- Quem entra pelo Google é convidado a **criar uma senha**, podendo depois entrar sem o Google
+  (o convite reaparece na página **Perfil** enquanto a senha não for definida).
+- **Esqueci minha senha** envia link de redefinição pelo Firebase.
+- As mensagens de erro explicam o motivo real (conta inexistente, conta do Google, senha errada,
+  sem conexão) em vez de um genérico "usuário ou senha inválidos".
+
+## Gerar o APK com ícone e nome corretos
+
+O nome do app vem de `manifest.json` (`name` / `short_name`) e de `capacitor.config.json`
+(`appName`), e os ícones já estão gerados em `assets/` e `resources/`.
+
+```bash
+npm install
+npx cap add android      # apenas na primeira vez
+npm run cap:sync         # copia o site para o projeto Android
+npm run cap:icons        # aplica ícone e splash a partir de resources/
+npm run cap:open:android # abre no Android Studio para gerar o APK/AAB
+```
+
+- `resources/icon.png` — ícone base (1024×1024)
+- `resources/icon-foreground.png` + `resources/icon-background.png` — ícone adaptativo do Android
+- `resources/splash.png` e `resources/splash-dark.png` — telas de abertura
+
+Pelo **PWABuilder**, o `manifest.json` já entrega os tamanhos 96→512 e um ícone `maskable`,
+então a logo é usada automaticamente e o app é instalado como **Igreja Imperial Batista**.
+
 ## Configuração inicial
 
 ### 1. Acesso administrativo

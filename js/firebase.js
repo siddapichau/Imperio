@@ -197,12 +197,16 @@
 
   function normalizeAuthUser(user) {
     if (!user) return null;
+    const providers = (user.providerData || []).map(item => item && item.providerId).filter(Boolean);
     return {
       uid: user.uid,
       email: user.email || '',
       displayName: user.displayName || user.name || '',
       photoURL: user.photoURL || '',
-      providerId: user.providerData && user.providerData[0] ? user.providerData[0].providerId : (user.providerId || 'password')
+      providerId: providers[0] || user.providerId || 'password',
+      providers,
+      // true quando a conta já tem senha própria (login por email/senha habilitado)
+      hasPassword: providers.includes('password') || user.providerId === 'local'
     };
   }
 
@@ -251,9 +255,37 @@
           const result = await auth.signInWithEmailAndPassword(login, password);
           return normalizeAuthUser(result.user);
         } catch (e) {
-          // Se o usuário digitou username, já resolvemos para email. Se falhar, tenta mensagem amigável
-          if (e && e.code === 'auth/user-not-found') throw new Error('Email/usuário ou senha inválidos.');
-          if (e && e.code === 'auth/wrong-password') throw new Error('Email/usuário ou senha inválidos.');
+          const code = (e && e.code) || '';
+          // Descobre COMO essa conta pode entrar, para dar uma mensagem útil em vez de "senha inválida".
+          let methods = [];
+          try { methods = await auth.fetchSignInMethodsForEmail(login) || []; } catch (_) { methods = []; }
+
+          if (methods.length && !methods.includes('password')) {
+            if (methods.includes('google.com')) {
+              const error = new Error('Esta conta foi criada com o Google. Toque em "Entrar com Google" e, depois, defina uma senha no seu perfil.');
+              error.code = 'imperio/use-google';
+              error.email = login;
+              throw error;
+            }
+            throw new Error('Esta conta usa outro método de login. Use o botão correspondente para entrar.');
+          }
+
+          if (code === 'auth/user-not-found' || (!methods.length && code === 'auth/invalid-credential')) {
+            const error = new Error('Não encontramos uma conta com este email/usuário. Toque em "Criar conta" ou entre com o Google.');
+            error.code = 'imperio/not-found';
+            error.email = login;
+            throw error;
+          }
+          if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+            const error = new Error('Senha incorreta. Toque em "Esqueci minha senha" para receber um link de redefinição por email.');
+            error.code = 'imperio/wrong-password';
+            error.email = login;
+            throw error;
+          }
+          if (code === 'auth/invalid-email') throw new Error('Email inválido. Confira o que foi digitado.');
+          if (code === 'auth/too-many-requests') throw new Error('Muitas tentativas seguidas. Aguarde alguns minutos ou redefina a senha por email.');
+          if (code === 'auth/network-request-failed') throw new Error('Sem conexão com o servidor. Verifique sua internet e tente de novo.');
+          if (code === 'auth/user-disabled') throw new Error('Esta conta foi desativada. Fale com a secretaria da igreja.');
           throw e;
         }
       }
@@ -271,12 +303,27 @@
         found = migrated;
       }
 
-      if (!found) throw new Error('Email/usuário ou senha inválidos.');
+      if (!found) {
+        const error = new Error('Não encontramos uma conta com este email/usuário. Toque em "Criar conta" ou entre com o Google.');
+        error.code = 'imperio/not-found';
+        error.email = login.includes('@') ? login : '';
+        throw error;
+      }
       const stored = found.passwordHash || '';
-      const valid = stored
-        ? (security ? security.verifyPassword(password, stored) : String(password) === stored)
-        : false;
-      if (!valid) throw new Error('Email/usuário ou senha inválidos.');
+      if (!stored) {
+        // Conta criada pelo Google que ainda não definiu senha própria.
+        const error = new Error('Esta conta ainda não tem senha. Entre com o Google e depois crie uma senha no seu perfil.');
+        error.code = 'imperio/use-google';
+        error.email = found.email || '';
+        throw error;
+      }
+      const valid = security ? security.verifyPassword(password, stored) : String(password) === stored;
+      if (!valid) {
+        const error = new Error('Senha incorreta. Toque em "Esqueci minha senha" para redefinir.');
+        error.code = 'imperio/wrong-password';
+        error.email = found.email || '';
+        throw error;
+      }
       const user = normalizeAuthUser({ uid: found.id, email: found.email, displayName: found.name, photoURL: found.photoURL || found.avatarUrl || '', providerId: 'local' });
       setLocalSession(user);
       return user;
@@ -386,6 +433,68 @@
     async signOut() {
       if (mode === 'firebase' && auth) return auth.signOut();
       setLocalSession(null);
+    },
+
+    /** Métodos de login disponíveis para um email (password, google.com...). */
+    async methodsFor(email) {
+      const clean = String(email || '').trim();
+      if (!clean) return [];
+      if (mode === 'firebase' && auth) {
+        try { return await auth.fetchSignInMethodsForEmail(clean) || []; } catch (_) { return []; }
+      }
+      const users = (getLocal('appData') || {}).users || {};
+      const found = findUserByEmail(users, clean);
+      return found ? [found.passwordHash ? 'password' : 'google.com'] : [];
+    },
+
+    /** Envia email de redefinição de senha. */
+    async sendPasswordReset(email) {
+      const clean = String(email || '').trim();
+      if (!clean) throw new Error('Informe seu email para receber o link de redefinição.');
+      if (mode === 'firebase' && auth) {
+        try {
+          await auth.sendPasswordResetEmail(clean);
+          return true;
+        } catch (e) {
+          if (e && e.code === 'auth/user-not-found') throw new Error('Não encontramos uma conta com este email.');
+          if (e && e.code === 'auth/invalid-email') throw new Error('Email inválido.');
+          throw e;
+        }
+      }
+      throw new Error('Redefinição por email disponível apenas com o Firebase conectado. Fale com a secretaria.');
+    },
+
+    /**
+     * Define/cria uma senha para a conta logada.
+     * Usado quando a pessoa entrou pelo Google e ainda não tem senha própria no app.
+     */
+    async setPassword(password) {
+      const clean = String(password || '');
+      if (mode === 'firebase' && auth) {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Entre novamente para definir sua senha.');
+        const providers = (user.providerData || []).map(item => item.providerId);
+        try {
+          if (providers.includes('password')) {
+            await user.updatePassword(clean);
+          } else {
+            const credential = window.firebase.auth.EmailAuthProvider.credential(user.email, clean);
+            await user.linkWithCredential(credential);
+          }
+          return true;
+        } catch (e) {
+          if (e && e.code === 'auth/requires-recent-login') throw new Error('Por segurança, saia e entre novamente antes de definir a senha.');
+          if (e && e.code === 'auth/weak-password') throw new Error('Senha fraca. Use no mínimo 8 caracteres com maiúscula, número e símbolo.');
+          if (e && e.code === 'auth/email-already-in-use') throw new Error('Já existe outra conta com este email.');
+          throw e;
+        }
+      }
+      const session = localSession();
+      if (!session) throw new Error('Entre novamente para definir sua senha.');
+      const security = window.ImperioSecurity;
+      setLocal('appData/users/' + session.uid + '/passwordHash', security ? security.hashPassword(clean) : clean);
+      setLocal('appData/users/' + session.uid + '/needsPassword', false);
+      return true;
     }
   };
 
