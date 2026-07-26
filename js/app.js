@@ -26,14 +26,34 @@
   let registering = false;
   let passwordPromptShown = false;
 
+  const adminFrame = document.getElementById('adminFrame');
+
   function currentPage() {
     return (location.hash || '#home').replace('#', '').split('?')[0] || 'home';
   }
 
   function navigate(page) {
     const next = page || 'home';
+    if (next === 'admin') {
+      // Carrega admin via iframe no mesmo frame-wrap — mais rápido que abrir nova página
+      if (location.hash !== '#admin') location.hash = 'admin';
+      frame.hidden = true;
+      if (adminFrame) {
+        adminFrame.hidden = false;
+        if (!adminFrame.src || !adminFrame.src.includes('admin.html')) {
+          adminFrame.src = 'admin.html';
+        }
+      } else {
+        location.href = 'admin.html';
+      }
+      closeDrawer();
+      renderNav();
+      return;
+    }
     if (location.hash !== '#' + next) location.hash = next;
     const url = `pages/${next}.html`;
+    frame.hidden = false;
+    if (adminFrame) adminFrame.hidden = true;
     if (!frame.src.endsWith(url)) frame.src = url;
     renderNav();
     closeDrawer();
@@ -129,7 +149,11 @@
     loginOpen.onclick = () => navigate('perfil');
 
     // Painel administrativo só aparece para quem tem permissão (admin, líder ou editor).
-    if (drawerAdminLink) drawerAdminLink.hidden = !app.can('admin.access');
+    if (drawerAdminLink) {
+      drawerAdminLink.hidden = !app.can('admin.access');
+      drawerAdminLink.href = '#admin';
+      drawerAdminLink.onclick = event => { event.preventDefault(); closeDrawer(); navigate('admin'); };
+    }
 
     if (drawerProfile) {
       drawerProfile.hidden = false;
@@ -164,9 +188,15 @@
 
   function renderNotificationButton() {
     if (!notificationBtn) return;
-    const supported = 'Notification' in window;
+    const isApk = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    const supported = isApk || 'Notification' in window;
     notificationBtn.hidden = !supported;
     if (!supported) return;
+    if (isApk) {
+      notificationBtn.textContent = '🔔 Avisos';
+      notificationBtn.title = 'Ativar notificações do app';
+      return;
+    }
     notificationBtn.textContent = Notification.permission === 'granted' ? '🔔 Ativas' : '🔔 Avisos';
     notificationBtn.title = Notification.permission === 'granted' ? 'Notificações ativadas' : 'Ativar notificações de avisos, agenda e atividades';
   }
@@ -402,12 +432,23 @@
   app.on('theme', renderBrand);
   app.on('palette', renderBrand);
 
+  // Comunicação com o iframe do admin (quando aberto via #admin):
+  // redireciona cliques em "Ver app" de volta para o app principal.
+  window.addEventListener('message', event => {
+    if (!event.data) return;
+    if (event.data.source === 'imperio-admin' && event.data.action === 'navigate') {
+      navigate(event.data.page || 'home');
+    }
+  });
+
   app.init().then(() => {
     renderBrand();
     renderNav();
     renderUser();
     renderNotificationButton();
     applyAuthMode();
-    navigate(currentPage());
+    const start = currentPage();
+    if (start === 'admin') navigate('admin');
+    else navigate(start);
   });
 })();

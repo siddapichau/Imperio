@@ -6,6 +6,13 @@
     return location.pathname.split('/').pop().replace('.html', '') || 'home';
   }
 
+  function syncBibleFromParent() {
+    const parent = window.parent;
+    if (parent && parent.ImperioBible && !window.ImperioBible) {
+      window.ImperioBible = parent.ImperioBible;
+    }
+  }
+
   function syncTheme(parentApp) {
     const root = document.documentElement;
     const parentRoot = window.parent && window.parent.document && window.parent.document.documentElement;
@@ -39,6 +46,7 @@
       setTimeout(boot, 60);
       return;
     }
+    syncBibleFromParent();
     const page = pageName();
     function render() {
       syncTheme(parentApp);

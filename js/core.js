@@ -194,23 +194,24 @@
       },
       menus: {
         home: { id: 'home', label: 'Home', icon: '🏠', page: 'home', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 1 },
-        membros: { id: 'membros', label: 'Membros', icon: '👥', page: 'membros', visible: true, roles: ['lider', 'pastor'], order: 2 },
-        cultos: { id: 'cultos', label: 'Cultos', icon: '⛪', page: 'cultos', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 3 },
-        agenda: { id: 'agenda', label: 'Agenda', icon: '📅', page: 'agenda', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 4 },
-        versiculo: { id: 'versiculo', label: 'Versículo', icon: '📖', page: 'versiculo', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 5 },
-        palavra: { id: 'palavra', label: 'Palavra', icon: '🙏', page: 'palavra', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 6 },
+        biblia: { id: 'biblia', label: 'Bíblia Batista', icon: '📖', page: 'biblia', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 2 },
+        versiculo: { id: 'versiculo', label: 'Versículo', icon: '✨', page: 'versiculo', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 3 },
+        cultos: { id: 'cultos', label: 'Cultos', icon: '⛪', page: 'cultos', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 4 },
+        agenda: { id: 'agenda', label: 'Agenda', icon: '📅', page: 'agenda', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 5 },
+        midia: { id: 'midia', label: 'Mídia', icon: '🎬', page: 'midia', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 6 },
         atividades: { id: 'atividades', label: 'Atividades', icon: '🤝', page: 'atividades', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 7 },
         celula: { id: 'celula', label: 'Célula', icon: '🏡', page: 'celula', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 8 },
-        quiz: { id: 'quiz', label: 'Quiz', icon: '🧠', page: 'quiz', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 9 },
-        dizimo: { id: 'dizimo', label: 'Dízimo/Oferta', icon: '💝', page: 'dizimo', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 10 },
+        oracao: { id: 'oracao', label: 'Oração', icon: '🙌', page: 'oracao', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 9 },
+        palavra: { id: 'palavra', label: 'Palavra', icon: '🙏', page: 'palavra', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 10 },
         postar: { id: 'postar', label: 'Postar', icon: '✍️', page: 'postar', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 11 },
-        perfil: { id: 'perfil', label: 'Perfil', icon: '🙋', page: 'perfil', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 12 },
-        oracao: { id: 'oracao', label: 'Oração', icon: '🙌', page: 'oracao', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 13 },
-        midia: { id: 'midia', label: 'Mídia', icon: '🎬', page: 'midia', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 14 },
-        leitura: { id: 'leitura', label: 'Leitura', icon: '📚', page: 'leitura', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 15 },
-        aniversarios: { id: 'aniversarios', label: 'Aniversários', icon: '🎂', page: 'aniversarios', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 16 },
-        sobre: { id: 'sobre', label: 'Sobre', icon: '⛪', page: 'sobre', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 17 },
-        contato: { id: 'contato', label: 'Contato', icon: '📍', page: 'contato', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 18 }
+        quiz: { id: 'quiz', label: 'Quiz', icon: '🧠', page: 'quiz', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 12 },
+        leitura: { id: 'leitura', label: 'Leitura', icon: '📚', page: 'leitura', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 13 },
+        dizimo: { id: 'dizimo', label: 'Dízimo/Oferta', icon: '💝', page: 'dizimo', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 14 },
+        aniversarios: { id: 'aniversarios', label: 'Aniversários', icon: '🎂', page: 'aniversarios', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 15 },
+        membros: { id: 'membros', label: 'Membros', icon: '👥', page: 'membros', visible: true, roles: ['lider', 'pastor'], order: 16 },
+        perfil: { id: 'perfil', label: 'Perfil', icon: '🙋', page: 'perfil', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 17 },
+        sobre: { id: 'sobre', label: 'Sobre', icon: '⛪', page: 'sobre', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 18 },
+        contato: { id: 'contato', label: 'Contato', icon: '📍', page: 'contato', visible: true, roles: ['membro', 'editor', 'lider', 'pastor'], order: 19 }
       }
     },
     integrations: {
@@ -1113,7 +1114,14 @@
     return true;
   }
 
+  function isApk() {
+    // Detecta se está rodando no APK Capacitor (não em navegador comum).
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+      || /(Android)/i.test(navigator.userAgent) && !/Chrome|Firefox|Safari|Mozilla/i.test(navigator.userAgent);
+  }
+
   function notificationSupported() {
+    if (isApk()) return true; // APK usa o plugin LocalNotifications se disponível
     return typeof window !== 'undefined' && 'Notification' in window;
   }
 
@@ -1125,11 +1133,37 @@
       tag: 'imperio-batista',
       data: { url: pageUrl('home') }
     }, options || {});
-    if (!notificationSupported()) {
+
+    // No APK/Capacitor, usa LocalNotifications se disponível, senão cai para toast.
+    if (isApk() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+      try {
+        const { LocalNotifications } = window.Capacitor.Plugins;
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: Math.floor(Math.random() * 900000) + 100000,
+            title,
+            body: opts.body || '',
+            schedule: { at: new Date(Date.now() + 100) },
+            sound: 'beep.wav',
+            attachments: []
+          }]
+        });
+        return true;
+      } catch (err) {
+        console.warn('LocalNotifications falhou, usando fallback:', err);
+        if (opts.body) toast(`${title}: ${opts.body}`);
+        return true;
+      }
+    }
+
+    if (!notificationSupported() || typeof Notification === 'undefined') {
       if (opts.body) toast(opts.body);
       return false;
     }
-    if (Notification.permission !== 'granted') return false;
+    if (Notification.permission !== 'granted') {
+      if (opts.body) toast(`${title}: ${opts.body}`);
+      return false;
+    }
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready;
@@ -1139,13 +1173,29 @@
         console.warn('Notificação via service worker falhou:', error);
       }
     }
-    new Notification(title, opts);
-    return true;
+    try { new Notification(title, opts); return true; }
+    catch (err) {
+      if (opts.body) toast(`${title}: ${opts.body}`);
+      return false;
+    }
   }
 
   async function requestNotifications() {
-    if (!notificationSupported()) {
-      toast('Este navegador não suporta notificações.');
+    // APK/Capacitor: usa plugin LocalNotifications
+    if (isApk() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+      try {
+        const { LocalNotifications } = window.Capacitor.Plugins;
+        await LocalNotifications.requestPermissions();
+        toast('Notificações ativadas no app.');
+        await showNotification('Igreja Imperial Batista', { body: 'Você receberá avisos, agenda e atividades da igreja.', tag: 'imperio-notifications-on' });
+        return 'granted';
+      } catch (err) {
+        console.warn('Permissão notificação APK falhou:', err);
+        // Tenta Notification API tradicional
+      }
+    }
+    if (typeof Notification === 'undefined') {
+      toast('As notificações aparecerão como avisos dentro do app.');
       return 'unsupported';
     }
     const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
@@ -1153,7 +1203,7 @@
       toast('Notificações ativadas.');
       await showNotification('Igreja Imperial Batista', { body: 'Você receberá avisos, agenda e atividades da igreja.', tag: 'imperio-notifications-on' });
     } else {
-      toast('Notificações não foram permitidas.');
+      toast('Notificações não foram permitidas. Você ainda receberá avisos pelo app.');
     }
     return permission;
   }

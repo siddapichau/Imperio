@@ -318,21 +318,59 @@
   }
 
   function renderMembros(ctx) {
-    const { e, root, list } = ctx;
-    if (!app.hasRole('lider')) {
-      root.innerHTML = `<div class="page-container">${loginCard(e)}<div class="empty section">A lista de membros é liberada para líderes e pastores.</div></div>`;
-      return;
-    }
-    const users = list('users').sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    const { e, root, doc, list } = ctx;
+    const allUsers = list('users').sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     const cells = app.getAt('cells', {});
     const roleNames = { pastor: 'Pastor/Admin', lider: 'Líder', editor: 'Editor', membro: 'Membro' };
-    const roleCounts = users.reduce((acc, u) => {
+    const isLeader = app.hasRole('lider');
+    const leadership = allUsers.filter(u => ['pastor','lider','editor'].includes(app.normalizeRole(u.role)));
+    const regulars = allUsers.filter(u => app.normalizeRole(u.role) === 'membro');
+    const me = app.state.user;
+    // Persiste preferência (liderança ver tudo; membros comuns veem liderança por padrão)
+    let showRegulars = localStorage.getItem('imperioShowMembers') === '1';
+    if (!isLeader && !me) showRegulars = false;
+
+    // Para membros comuns (sem cargo de liderança), lista só a liderança (com botão "Ver membros comuns")
+    if (!isLeader) {
+      root.innerHTML = `<div class="page-container">
+        <div class="section-head"><div><h1>Nossa liderança</h1><p class="muted">Pastores, líderes e editores da igreja.</p></div></div>
+        <section class="section grid three">
+          ${leadership.map(u => `<article class="card member-leader-card">
+            <div class="member-leader-photo">${app.avatarMarkup(u, 'large')}</div>
+            <h3>${e(u.name || 'Sem nome')}</h3>
+            <span class="status ${app.normalizeRole(u.role) === 'pastor' ? 'approved' : app.normalizeRole(u.role) === 'lider' ? 'pending' : ''}">${e({pastor:'Pastor',lider:'Líder',editor:'Editor',membro:'Membro'}[app.normalizeRole(u.role)])}</span>
+            ${u.whatsapp || u.email ? `<p class="muted small">${e(u.whatsapp || u.email || '')}</p>` : ''}
+          </article>`).join('') || '<div class="empty">Liderança em atualização.</div>'}
+        </section>
+        ${me ? `<section class="section">
+          <div class="row gap wrap between member-toggle-bar">
+            <button class="btn ${showRegulars ? 'ghost' : 'primary'} small" id="memberShowLeaders" type="button">👑 Ver liderança</button>
+            <button class="btn ${showRegulars ? 'primary' : 'accent'} small" id="memberToggleMembers" type="button">${showRegulars ? 'Ocultar membros comuns' : 'Ver membros comuns (' + regulars.length + ')'}</button>
+          </div>
+        </section>` : ''}
+        ${showRegulars && me ? `<section class="section grid three" id="memberGrid">${regulars.map(u => `<article class="card member-leader-card">
+          <div class="member-leader-photo">${app.avatarMarkup(u, 'large')}</div>
+          <h3>${e(u.name || 'Sem nome')}</h3>
+          <span class="status">Membro</span>
+        </article>`).join('') || '<div class="empty">Nenhum membro comum cadastrado.</div>'}</section>` : ''}
+      </div>`;
+      // Binds do toggle
+      const ldrBtn = root.querySelector('#memberShowLeaders');
+      const allBtn = root.querySelector('#memberToggleMembers');
+      if (ldrBtn) ldrBtn.onclick = () => { localStorage.setItem('imperioShowMembers','0'); renderMembros(ctx); };
+      if (allBtn) allBtn.onclick = () => { localStorage.setItem('imperioShowMembers', showRegulars ? '0' : '1'); renderMembros(ctx); };
+      return;
+    }
+
+    // Visão de líder/pastor/editor: todos os membros
+    const roleCounts = allUsers.reduce((acc, u) => {
       const role = app.normalizeRole(u.role);
       acc[role] = (acc[role] || 0) + 1;
       return acc;
     }, {});
+    const users = showRegulars ? allUsers : leadership;
     const roleChips = [
-      ['', 'Todos', users.length],
+      ['all', 'Todos', allUsers.length],
       ['pastor', 'Pastores', roleCounts.pastor || 0],
       ['lider', 'Líderes', roleCounts.lider || 0],
       ['editor', 'Editores', roleCounts.editor || 0],
@@ -372,11 +410,21 @@
     const avgPresencePercent = users.length ? Math.round(users.reduce((sum, user) => sum + (metricsByUser[user.id].totalPresence / maxPresence * 100), 0) / users.length) : 0;
 
     root.innerHTML = `<div class="page-container">
-      <div class="section-head"><div><h1>Membros</h1><p class="muted">Lista objetiva: nome, cargo, célula e médias de participação/presença.</p></div><span class="badge">${users.length} cadastro(s)</span></div>
+      <div class="section-head"><div><h1>Membros</h1><p class="muted">${showRegulars ? 'Todos os membros da igreja.' : 'Liderança da igreja (pastores, líderes e editores).'}</p></div><span class="badge">${allUsers.length} cadastro(s)</span></div>
 
       <section class="section grid two">
         <div class="card kpi"><div class="icon-bubble">📲</div><div><strong>${e(avgUsagePercent)}%</strong><span>média geral de uso do APK</span></div></div>
         <div class="card kpi"><div class="icon-bubble">✅</div><div><strong>${e(avgPresencePercent)}%</strong><span>média geral de presença marcada</span></div></div>
+      </section>
+
+      <section class="section">
+        <div class="row gap wrap between member-toggle-bar">
+          <div class="row gap">
+            <button class="btn ${showRegulars ? 'ghost' : 'primary'} small" id="memberShowLeaders" type="button">👑 Ver liderança (${leadership.length})</button>
+            <button class="btn ${showRegulars ? 'primary' : 'ghost'} small" id="memberShowAll" type="button">👥 Ver todos os membros (${allUsers.length})</button>
+          </div>
+          ${!showRegulars && regulars.length ? `<button class="btn accent small" id="memberToggleMembers" type="button">Ver membros comuns (${regulars.length})</button>` : ''}
+        </div>
       </section>
 
       <section class="card member-filter-card section">
@@ -401,10 +449,13 @@
         const presencePercent = Math.round((m.totalPresence / maxPresence) * 100);
         const haystack = [u.name, cell, roleNames[role], role].join(' ').toLowerCase();
         return `<article class="card member-card" data-member-role="${e(role)}" data-member-cell="${e(u.cellId || '')}" data-member-search="${e(haystack)}">
-          <div class="member-summary">
-            <h3>${e(u.name || 'Sem nome')}</h3>
-            <span class="status ${role === 'pastor' ? 'approved' : role === 'lider' ? 'pending' : ''}">${e(roleNames[role] || 'Membro')}</span>
-            <p class="muted"><strong>Célula:</strong> ${e(cell)}</p>
+          <div class="member-photo-row">
+            <span class="member-photo">${app.avatarMarkup(u, 'avatar-sm')}</span>
+            <div class="member-summary">
+              <h3>${e(u.name || 'Sem nome')}</h3>
+              <span class="status ${role === 'pastor' ? 'approved' : role === 'lider' ? 'pending' : ''}">${e(roleNames[role] || 'Membro')}</span>
+              <p class="muted"><strong>Célula:</strong> ${e(cell)}</p>
+            </div>
           </div>
           <div class="member-metrics">
             <div class="member-metric">
@@ -827,6 +878,191 @@
     </div>`;
   }
 
+  function renderBiblia(ctx) {
+    const { e, root, doc } = ctx;
+    const Bible = window.ImperioBible;
+    if (!Bible || !Bible.getBooks) {
+      root.innerHTML = `<div class="page-container"><div class="empty">Bíblia carregando...</div></div>`;
+      return;
+    }
+    const books = Bible.getBooks();
+    const params = new URLSearchParams((location.hash || '').split('?')[1] || '');
+    let currentBook = params.get('livro') || 'jo';
+    let currentChapter = Number(params.get('cap')) || 3;
+    if (!Bible.getBook(currentBook)) { currentBook = 'jo'; currentChapter = 3; }
+    const book = Bible.getBook(currentBook);
+    if (!Bible.hasChapter(currentBook, currentChapter)) {
+      // Procura o primeiro capítulo com conteúdo
+      for (let c = 1; c <= book.chapters; c++) {
+        if (Bible.hasChapter(currentBook, c)) { currentChapter = c; break; }
+      }
+    }
+
+    const at = books.filter(b => b.testament === 'AT');
+    const nt = books.filter(b => b.testament === 'NT');
+    const chapter = Bible.getChapter(currentBook, currentChapter) || {};
+    const verses = Object.keys(chapter).filter(k => /^\d+$/.test(k)).map(Number).sort((a,b)=>a-b);
+    const daily = Bible.randomVerse();
+
+    function bookList(list, label) {
+      return `<div class="bible-books-group"><h3 class="bible-testament-title">${label}</h3><div class="bible-books-grid">${list.map(b => {
+        const has = Bible.hasChapter(b.id, 1);
+        return `<button class="bible-book-chip ${b.id === currentBook ? 'active' : ''}" ${has ? '' : 'disabled'} data-bible-book="${b.id}" title="${e(b.name)}${has ? '' : ' (em breve)'}">${e(b.abbr)}</button>`;
+      }).join('')}</div></div>`;
+    }
+
+    function chapterNav() {
+      const prevCh = currentChapter > 1 ? currentChapter - 1 : null;
+      const nextCh = currentChapter < book.chapters ? currentChapter + 1 : null;
+      const chapters = [];
+      for (let c = 1; c <= book.chapters; c++) {
+        const avail = Bible.hasChapter(currentBook, c);
+        chapters.push(`<option value="${c}" ${c === currentChapter ? 'selected' : ''} ${avail ? '' : 'disabled'}>${c}</option>`);
+      }
+      return `<div class="bible-chapter-nav">
+        <button class="btn small ghost" data-bible-chapter="${prevCh || ''}" ${prevCh && Bible.hasChapter(currentBook, prevCh) ? '' : 'disabled'}>← Anterior</button>
+        <select id="bibleChapterSelect" class="bible-chapter-select" aria-label="Capítulo">${chapters.join('')}</select>
+        <button class="btn small ghost" data-bible-chapter="${nextCh || ''}" ${nextCh && Bible.hasChapter(currentBook, nextCh) ? '' : 'disabled'}>Próximo →</button>
+      </div>`;
+    }
+
+    root.innerHTML = `<div class="page-container">
+      <section class="hero">
+        <span class="badge">📖 Bíblia Batista</span>
+        <h1>Bíblia Sagrada</h1>
+        <p>Leia a Palavra de Deus. Versão Almeida com livros do Antigo e Novo Testamento. Os capítulos mais importantes estão completos; os demais serão adicionados em atualizações.</p>
+      </section>
+
+      <section class="section card bible-daily">
+        <span class="badge">✨ Versículo aleatório</span>
+        <blockquote class="bible-daily-text">${e(daily.text)}</blockquote>
+        <p class="muted"><strong>${e(daily.reference)}</strong></p>
+        <div class="row gap wrap">
+          <button class="btn small primary" data-bible-random="1">🎲 Outro versículo</button>
+          <button class="btn small ghost" data-share="native" data-share-title="${e(daily.reference)}" data-share-text="${e('“' + daily.text + '” (' + daily.reference + ')')}" data-share-url="${e(app.pageUrl('biblia'))}">📤 Compartilhar</button>
+          <button class="btn small ghost" data-bible-goto="${e(daily.bookId)}:${e(daily.chapter)}">Ler capítulo</button>
+        </div>
+      </section>
+
+      <section class="section card bible-search-card">
+        <label class="full">Buscar na Bíblia
+          <input id="bibleSearch" type="search" placeholder="Digite uma palavra (ex: amor, fé, paz...)" inputmode="search">
+        </label>
+        <div id="bibleSearchResults" class="bible-search-results" hidden></div>
+      </section>
+
+      <section class="section bible-books-section">
+        ${bookList(at, 'Antigo Testamento')}
+        ${bookList(nt, 'Novo Testamento')}
+      </section>
+
+      <section class="section card bible-reader" id="bibleReader">
+        <div class="bible-reader-head">
+          <h2>${e(book.name)} <small>${currentChapter}</small></h2>
+        </div>
+        ${chapterNav()}
+        <article class="bible-text rich-content">
+          ${verses.length ? verses.map(v => `<p class="bible-verse" id="v${v}"><sup class="bible-verse-num">${v}</sup>${e(chapter[v])}</p>`).join('') : '<div class="empty">Capítulo em preparação. Selecione outro capítulo ou livro.</div>'}
+        </article>
+        ${chapterNav()}
+        ${verses.length ? `<div class="bible-actions row gap wrap">
+          <button class="btn small primary" data-share="native" data-share-title="${e(book.name + ' ' + currentChapter)}" data-share-text="${e(verses.map(v => v + '. ' + chapter[v]).join(' ').slice(0, 400))}" data-share-url="${e(app.pageUrl('biblia') + '?livro=' + currentBook + '&cap=' + currentChapter)}">📤 Compartilhar capítulo</button>
+          <button class="btn small ghost" data-bible-copy="1">📋 Copiar capítulo</button>
+        </div>` : ''}
+      </section>
+
+      <section class="section card">
+        <h3>Sobre a Bíblia</h3>
+        <p class="muted">A Bíblia é a Palavra de Deus, composta por 66 livros (39 no Antigo Testamento e 27 no Novo Testamento). Ela é a regra de fé e prática para a igreja batista, inspirada pelo Espírito Santo e útil para ensinar, repreender, corrigir e instruir em justiça (2 Timóteo 3:16).</p>
+      </section>
+    </div>`;
+
+    // Binds
+    root.querySelectorAll('[data-bible-book]').forEach(btn => {
+      btn.onclick = () => {
+        const bId = btn.dataset.bibleBook;
+        const b = Bible.getBook(bId);
+        let first = 1;
+        for (let c = 1; c <= b.chapters; c++) if (Bible.hasChapter(bId, c)) { first = c; break; }
+        navigateBible(bId, first);
+      };
+    });
+    root.querySelectorAll('[data-bible-chapter]').forEach(btn => {
+      btn.onclick = () => {
+        const ch = Number(btn.dataset.bibleChapter);
+        if (!ch) return;
+        navigateBible(currentBook, ch);
+      };
+    });
+    const sel = root.querySelector('#bibleChapterSelect');
+    if (sel) sel.onchange = () => navigateBible(currentBook, Number(sel.value));
+
+    const randomBtn = root.querySelector('[data-bible-random]');
+    if (randomBtn) randomBtn.onclick = () => {
+      const v = Bible.randomVerse();
+      navigateBible(v.bookId, v.chapter, v.verse);
+    };
+    const gotoBtns = root.querySelectorAll('[data-bible-goto]');
+    gotoBtns.forEach(btn => btn.onclick = () => {
+      const [b, c] = btn.dataset.bibleGoto.split(':');
+      navigateBible(b, Number(c));
+    });
+
+    const searchInput = root.querySelector('#bibleSearch');
+    const searchResults = root.querySelector('#bibleSearchResults');
+    if (searchInput) {
+      let timer;
+      searchInput.oninput = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const q = searchInput.value.trim();
+          if (q.length < 3) { searchResults.hidden = true; searchResults.innerHTML = ''; return; }
+          const results = Bible.searchText(q);
+          searchResults.hidden = false;
+          searchResults.innerHTML = results.length
+            ? results.slice(0, 20).map(r => `<button class="bible-search-item" type="button" data-bible-goto="${r.bookId}:${r.chapter}" data-verse="${r.verse}"><strong>${e(r.abbr)} ${r.chapter}:${r.verse}</strong><span>${e(r.text.length > 120 ? r.text.slice(0, 120) + '…' : r.text)}</span></button>`).join('')
+            : '<p class="muted">Nenhum resultado.</p>';
+          searchResults.querySelectorAll('[data-bible-goto]').forEach(b => b.onclick = () => {
+            const [bId, ch] = b.dataset.bibleGoto.split(':');
+            navigateBible(bId, Number(ch), Number(b.dataset.verse));
+          });
+        }, 300);
+      };
+    }
+
+    const copyBtn = root.querySelector('[data-bible-copy]');
+    if (copyBtn) copyBtn.onclick = async () => {
+      const text = `${book.name} ${currentChapter}\n\n` + verses.map(v => `${v}. ${chapter[v]}`).join('\n');
+      try { await navigator.clipboard.writeText(text); app.toast('Capítulo copiado!'); } catch (_) { app.toast('Não foi possível copiar.'); }
+    };
+
+    function navigateBible(bId, ch, verse) {
+      currentBook = bId;
+      currentChapter = ch;
+      params.set('livro', bId);
+      params.set('cap', String(ch));
+      history.replaceState(null, '', '#biblia?' + params.toString());
+      renderBiblia(ctx);
+      if (verse) {
+        setTimeout(() => {
+          const el = doc.getElementById('v' + verse);
+          if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('highlighted'); }
+        }, 150);
+      } else {
+        const reader = doc.getElementById('bibleReader');
+        if (reader) reader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    root.querySelectorAll('[data-share]').forEach(btn => {
+      btn.onclick = () => app.shareContent({
+        title: btn.dataset.shareTitle,
+        text: btn.dataset.shareText,
+        url: btn.dataset.shareUrl
+      }, btn.dataset.share).catch(err => app.toast(err.message || 'Não foi possível compartilhar.'));
+    });
+  }
+
   function renderQuiz(ctx) {
     const { e, root, list, user } = ctx;
     const me = user();
@@ -852,6 +1088,7 @@
     midia: renderMidia,
     leitura: renderLeitura,
     aniversarios: renderAniversarios,
+    biblia: renderBiblia,
     sobre: renderSobre,
     contato: renderContato
   };
@@ -1255,6 +1492,23 @@
         });
       };
     });
+
+    // Toggle "ver membros comuns" / "ver liderança"
+    const toggleMembers = doc.getElementById('memberToggleMembers');
+    if (toggleMembers) toggleMembers.onclick = () => {
+      localStorage.setItem('imperioShowMembers', '1');
+      renderEmbeddedPage('membros', doc);
+    };
+    const showLeaders = doc.getElementById('memberShowLeaders');
+    if (showLeaders) showLeaders.onclick = () => {
+      localStorage.setItem('imperioShowMembers', '0');
+      renderEmbeddedPage('membros', doc);
+    };
+    const showAll = doc.getElementById('memberShowAll');
+    if (showAll) showAll.onclick = () => {
+      localStorage.setItem('imperioShowMembers', '1');
+      renderEmbeddedPage('membros', doc);
+    };
 
     // Filtros da página de membros (cargo, célula e celular/WhatsApp).
     const memberGrid = doc.getElementById('memberGrid');
