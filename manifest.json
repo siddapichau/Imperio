@@ -72,10 +72,10 @@
   ],
   "shortcuts": [
     {
-      "name": "Dízimo e Oferta",
-      "short_name": "Ofertar",
-      "description": "Contribua por Pix com QR Code",
-      "url": "index.html#dizimo",
+      "name": "Bíblia Batista",
+      "short_name": "Bíblia",
+      "description": "Leia a Bíblia completa",
+      "url": "index.html#biblia",
       "icons": [
         {
           "src": "assets/icon-192.png",
@@ -98,10 +98,10 @@
       ]
     },
     {
-      "name": "Mural de oração",
-      "short_name": "Oração",
-      "description": "Envie e interceda por pedidos",
-      "url": "index.html#oracao",
+      "name": "Dízimo e Oferta",
+      "short_name": "Ofertar",
+      "description": "Contribua por Pix com QR Code",
+      "url": "index.html#dizimo",
       "icons": [
         {
           "src": "assets/icon-192.png",
@@ -111,10 +111,10 @@
       ]
     },
     {
-      "name": "Agenda",
-      "short_name": "Agenda",
-      "description": "Cultos e eventos da igreja",
-      "url": "index.html#agenda",
+      "name": "Mural de oração",
+      "short_name": "Oração",
+      "description": "Envie e interceda por pedidos",
+      "url": "index.html#oracao",
       "icons": [
         {
           "src": "assets/icon-192.png",

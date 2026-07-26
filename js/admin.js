@@ -12,7 +12,21 @@
   const openAdminDrawerBtn = document.getElementById('openAdminDrawer');
   const closeAdminDrawerBtn = document.getElementById('closeAdminDrawer');
   const adminDrawerBackdrop = document.getElementById('adminDrawerBackdrop');
+  const adminViewApp = document.getElementById('adminViewApp');
   let activeTab = localStorage.getItem('imperioAdminTab') || 'dashboard';
+
+  // Se o admin está carregado via iframe no app principal, "Ver app" volta ao app.
+  const inIframe = window.self !== window.top;
+  if (adminViewApp) {
+    if (inIframe) {
+      adminViewApp.textContent = '← Voltar ao app';
+      adminViewApp.href = '#home';
+      adminViewApp.onclick = event => {
+        event.preventDefault();
+        try { window.parent.postMessage({ source: 'imperio-admin', action: 'navigate', page: 'home' }, '*'); } catch (_) {}
+      };
+    }
+  }
 
   function openAdminDrawer() { if (adminDrawer) adminDrawer.setAttribute('aria-hidden', 'false'); }
   function closeAdminDrawer() { if (adminDrawer) adminDrawer.setAttribute('aria-hidden', 'true'); }
@@ -25,7 +39,7 @@
     ['dashboard', '📊 Dashboard', 'admin.dashboard'],
     ['geral', '🎨 Geral/Menu', 'settings.identity'],
     ['temas', '🌈 Temas', 'settings.identity'],
-    ['conteudo', '📰 Conteúdo', 'content.news'],
+    ['conteudo', '📰 Notícias', 'content.news'],
     ['cultos', '⛪ Cultos/Agenda', 'content.services'],
     ['celulas', '🏡 Células', 'content.cells'],
     ['midia', '🎬 Mídia', 'content.media'],
@@ -34,8 +48,7 @@
     ['devocionais', '🙏 Devocionais', 'content.devotionals'],
     ['quizzes', '🧠 Quizzes', 'content.quizzes'],
     ['pix', '💝 Pix/Doações', 'integrations.pix'],
-    ['ia', '✨ IA DeepSeek', 'integrations.ai'],
-    ['paginas', '📄 Páginas', 'content.pages'],
+    ['ia', '✨ IA', 'integrations.ai'],
     ['mensagens', '✉️ Mensagens', 'messages.read'],
     ['seguranca', '🔐 Segurança', 'security.manage'],
     ['json', '🧩 JSON', 'security.manage'],
@@ -507,28 +520,7 @@
     return `<div class="grid two">${collectionSection('Mídia (pregações, louvores, lives)', 'media', 'Cole o link do YouTube/Vimeo no campo "embed". Marque "live" para destacar como transmissão ao vivo.')}${collectionSection('Planos de leitura', 'readingPlans', 'Planos bíblicos com progresso por membro.')}</div>`;
   }
 
-  function paginasTab() {
-    const pages = list('customPages').sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
-    return `<div class="grid">
-      <section class="card">
-        <div class="section-head"><div><h2>Páginas personalizadas</h2><p class="muted">Crie páginas com o editor completo (imagens, vídeos, HTML) e exiba no app.</p></div><button class="btn primary small" id="newCustomPage">Nova página</button></div>
-        <div class="collection-list">${pages.map(page => `<article class="card compact collection-card"><div><div class="card-title-line"><h3>${e(page.title)}</h3><span class="status">${page.visible !== false ? 'visível' : 'oculta'}</span></div><p class="muted">slug: ${e(page.slug)} • ordem: ${e(page.order || 0)}</p></div><div class="row gap wrap"><button class="btn small primary" data-edit-page="${e(page.id)}">✏️ Editar conteúdo</button><button class="btn small" data-edit-path="customPages/${e(page.id)}">JSON</button><button class="btn small danger" data-delete-path="customPages/${e(page.id)}">Excluir</button></div></article>`).join('') || '<div class="empty">Nenhuma página personalizada.</div>'}</div>
-      </section>
-      <section class="card">
-        <h2>💡 Ideias de páginas para a igreja</h2>
-        <div class="grid three">
-          ${[
-            ['📖 Nossa fé', 'Declaração doutrinária batista, história e valores.'],
-            ['👶 Ministério infantil', 'Horários, check-in de crianças e segurança.'],
-            ['💍 Casamentos e batismos', 'Como agendar, requisitos e aconselhamento.'],
-            ['🤝 Seja voluntário', 'Ministérios abertos e formulário de inscrição.'],
-            ['🎓 Cursos e discipulado', 'Turmas de novos convertidos e escola bíblica.'],
-            ['📊 Prestação de contas', 'Transparência financeira da igreja.']
-          ].map(([title, text]) => `<div class="card compact"><h3>${e(title)}</h3><p class="muted">${e(text)}</p></div>`).join('')}
-        </div>
-      </section>
-    </div>`;
-  }
+  // Aba "páginas personalizadas" removida a pedido do usuário — usa-se apenas notícias e post.
 
   function mensagensTab() {
     const messages = list('messages').sort(app.byDateDesc);
@@ -599,7 +591,7 @@
   }
 
   function renderTab() {
-    const map = { dashboard, geral, temas, conteudo, cultos, celulas, midia: midiaTab, usuarios, posts, devocionais, quizzes, pix: pixTab, ia: iaTab, paginas: paginasTab, mensagens: mensagensTab, seguranca: segurancaTab, json: jsonEditor, firebase: firebaseTab };
+    const map = { dashboard, geral, temas, conteudo, cultos, celulas, midia: midiaTab, usuarios, posts, devocionais, quizzes, pix: pixTab, ia: iaTab, mensagens: mensagensTab, seguranca: segurancaTab, json: jsonEditor, firebase: firebaseTab };
     const entry = ALL_TABS.find(([id]) => id === activeTab);
     // Trava dupla: mesmo que alguém force a aba, sem permissão não renderiza o conteúdo.
     if (entry && !app.can(entry[2])) return deniedCard(entry[1].replace(/^[^\s]+\s/, ''));
@@ -657,7 +649,23 @@
       const path = btn.dataset.addCollection;
       if (!canWritePath(path)) return denyWrite(path);
       const id = idFor(path.slice(0, 5));
-      openJsonEditor(path + '/' + id, Object.assign({ id }, templates[path] || { id, title: 'Novo item' }));
+      const template = Object.assign({ id }, templates[path] || { id, title: 'Novo item' });
+      // Para conteúdo principal (notícias, posts, mídia) usa formulário rico com editor.
+      if (path === 'news' || path === 'posts' || path === 'media' || path === 'announcements' || path === 'activities' || path === 'devotionalVerses' || path === 'feelingWords') {
+        openContentEditor(path + '/' + id, template);
+      } else {
+        openJsonEditor(path + '/' + id, template);
+      }
+    });
+    // Botão "editar" em itens de coleções com conteúdo rico também usa editor rico.
+    root.querySelectorAll('[data-edit-path]').forEach(btn => {
+      // Sobrescreve apenas para content collections — outros continuam com JSON.
+      if (!/^(news|posts|media|announcements|activities|devotionalVerses|feelingWords)\//.test(btn.dataset.editPath)) return;
+      btn.onclick = () => {
+        const path = btn.dataset.editPath;
+        if (!canWritePath(path)) return denyWrite(path);
+        openContentEditor(path, app.getAt(path, {}) || {});
+      };
     });
     const addMenu = root.querySelector('[data-add-menu]');
     if (addMenu) addMenu.onclick = () => {
@@ -754,7 +762,6 @@
     bindTemas();
     bindPixTab();
     bindIaTab();
-    bindPaginas();
     bindMensagens();
     bindSeguranca();
     bindReveal();
@@ -925,18 +932,6 @@
     };
   }
 
-  function bindPaginas() {
-    const newBtn = root.querySelector('#newCustomPage');
-    if (newBtn) newBtn.onclick = () => {
-      const id = idFor('page');
-      openRichEditor('customPages/' + id, { id, slug: 'sobre', title: 'Nova página', content: '', visible: true, order: 10 });
-    };
-    root.querySelectorAll('[data-edit-page]').forEach(btn => btn.onclick = () => {
-      const id = btn.dataset.editPage;
-      openRichEditor('customPages/' + id, app.getAt('customPages/' + id, {}));
-    });
-  }
-
   function bindMensagens() {
     root.querySelectorAll('[data-mark-read]').forEach(btn => btn.onclick = async () => {
       await app.updateAt('messages/' + btn.dataset.markRead, { status: 'lida' });
@@ -989,6 +984,244 @@
       localStorage.removeItem('imperioSession');
       app.toast('Sessão local encerrada.');
       setTimeout(() => location.reload(), 800);
+    };
+  }
+
+  /** Editor com formulário intuitivo para coleções principais (notícias, posts, mídia...). */
+  function openContentEditor(path, value) {
+    const dialog = document.getElementById('formDialog');
+    const item = Object.assign({}, value || {});
+    const coll = String(path).split('/')[0];
+    const isNews = coll === 'news' || coll === 'posts';
+    const isMedia = coll === 'media';
+    const isAnn = coll === 'announcements';
+    const isAct = coll === 'activities';
+    const isDev = coll === 'devotionalVerses';
+    const isFeel = coll === 'feelingWords';
+
+    const field = (label, name, type, opts) => {
+      opts = opts || {};
+      const val = item[name] != null ? item[name] : (opts.default || '');
+      if (type === 'textarea') {
+        return `<label class="full">${label}<textarea name="${name}" rows="${opts.rows || 4}" placeholder="${opts.placeholder || ''}">${e(val)}</textarea></label>`;
+      }
+      if (type === 'richtext') {
+        return `<label class="full">${label}<textarea name="${name}" data-rich-editor data-min-height="${opts.min || 240}" placeholder="${opts.placeholder || ''}">${e(val || '')}</textarea></label>`;
+      }
+      if (type === 'select') {
+        return `<label>${label}<select name="${name}">${(opts.options || []).map(o => `<option value="${e(o.v)}" ${String(val) === String(o.v) ? 'selected' : ''}>${e(o.l)}</option>`).join('')}</select></label>`;
+      }
+      if (type === 'checkbox') {
+        return `<label class="checkbox-line full"><input type="checkbox" name="${name}" ${val ? 'checked' : ''}><span>${label}</span></label>`;
+      }
+      if (type === 'file') {
+        return `<label class="full">${label}
+          <div class="image-picker">
+            <div class="image-preview" data-preview-for="${name}">${val ? `<img src="${e(val)}" alt="">` : '<span class="muted">Sem imagem</span>'}</div>
+            <div class="row gap wrap">
+              <label class="btn small">⬆️ Enviar (WebP)<input type="file" accept="image/*" data-image-input="${name}" hidden></label>
+              <button class="btn small ghost" type="button" data-image-url="${name}">🔗 Por link</button>
+              <button class="btn small danger ghost" type="button" data-image-clear="${name}">Remover</button>
+            </div>
+          </div>
+          <input type="hidden" name="${name}" value="${e(val || '')}">
+        </label>`;
+      }
+      if (type === 'video') {
+        return `<label class="full">${label}
+          <input name="${name}" value="${e(val || '')}" placeholder="Link do YouTube, Vimeo ou iframe embed">
+          <small class="muted">Cole o link do vídeo (ex: https://www.youtube.com/watch?v=xxx) — o app já converte para player embutido.</small>
+          <div data-video-preview="${name}" class="section" style="margin-top:10px">${val && window.ImperioEditor && window.ImperioEditor.embedUrl(val) ? `<div class="embed-block"><iframe src="${e(window.ImperioEditor.embedUrl(val))}" allowfullscreen frameborder="0"></iframe></div>` : ''}</div>
+        </label>`;
+      }
+      return `<label>${label}<input name="${name}" type="${type || 'text'}" value="${e(val)}" placeholder="${opts.placeholder || ''}"></label>`;
+    };
+
+    let title = 'Novo item';
+    let fields = '';
+    if (isNews) {
+      title = item.id && app.getAt(path) ? 'Editar notícia/post' : 'Nova notícia/post';
+      fields = `
+        ${field('Título', 'title', 'text', { placeholder: 'Título da notícia' })}
+        ${field('Autor', 'author', 'text', { placeholder: 'Nome do autor', default: app.state.user ? app.state.user.name : 'Igreja' })}
+        ${field('Categoria', 'category', 'select', { options: [
+          {v:'Notícia',l:'Notícia'},{v:'Testemunho',l:'Testemunho'},{v:'Devocional',l:'Devocional'},
+          {v:'Atividade',l:'Atividade'},{v:'Evento',l:'Evento'},{v:'Geral',l:'Geral'}
+        ]})}
+        ${field('Resumo (aparece nas listas)', 'summary', 'text', { placeholder: 'Uma frase curta' })}
+        ${field('Imagem principal', 'image', 'file')}
+        ${field('Conteúdo completo', 'content', 'richtext', { placeholder: 'Escreva o conteúdo...', min: 300 })}
+        <div class="full row gap wrap">
+          <label class="checkbox-line"><input type="checkbox" name="featured" ${item.featured ? 'checked' : ''}><span>Destacar na home</span></label>
+          ${coll === 'posts' ? `<label class="checkbox-line"><input type="checkbox" name="status" value="approved" ${(item.status || 'approved') === 'approved' ? 'checked' : ''}><span>Aprovar imediatamente</span></label>` : ''}
+        </div>
+        <input type="hidden" name="status" value="${e(coll === 'news' ? 'approved' : (app.hasRole('lider') ? 'approved' : 'pending'))}">
+        <input type="hidden" name="date" value="${e(item.date || new Date().toISOString())}">
+      `;
+    } else if (isMedia) {
+      title = item.id && app.getAt(path) ? 'Editar mídia' : 'Nova mídia';
+      fields = `
+        ${field('Título', 'title', 'text', { placeholder: 'Ex: Pregação de domingo' })}
+        ${field('Categoria', 'category', 'select', { options: [
+          {v:'Pregação',l:'Pregação'},{v:'Louvor',l:'Louvor'},{v:'Estudo',l:'Estudo'},
+          {v:'Testemunho',l:'Testemunho'},{v:'Ao vivo',l:'Ao vivo'},{v:'Outro',l:'Outro'}
+        ]})}
+        ${field('Pregador/orador', 'speaker', 'text')}
+        ${field('Link do vídeo (YouTube/Vimeo) ou iframe', 'embed', 'video')}
+        ${field('Imagem de capa (opcional)', 'image', 'file')}
+        ${field('Descrição', 'description', 'textarea', { rows: 3 })}
+        <div class="full row gap wrap">
+          <label class="checkbox-line"><input type="checkbox" name="live" ${item.live ? 'checked' : ''}><span>🔴 Transmissão AO VIVO</span></label>
+          <label class="checkbox-line"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
+        </div>
+      `;
+    } else if (isAnn) {
+      title = item.id && app.getAt(path) ? 'Editar aviso' : 'Novo aviso';
+      fields = `
+        ${field('Título', 'title', 'text', { placeholder: 'Ex: Culto de celebração' })}
+        ${field('Texto do aviso', 'text', 'textarea', { rows: 4 })}
+        ${field('Prioridade', 'priority', 'select', { options: [{v:'normal',l:'Normal'},{v:'alta',l:'Alta 🔔'}] })}
+        <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível</span></label>
+      `;
+    } else if (isAct) {
+      title = item.id && app.getAt(path) ? 'Editar atividade' : 'Nova atividade';
+      fields = `
+        ${field('Nome da atividade/ministério', 'title', 'text', { placeholder: 'Ex: Ação social' })}
+        ${field('Descrição', 'description', 'textarea', { rows: 4 })}
+        ${field('Líder/responsável', 'leader', 'text')}
+        ${field('Agenda/horário', 'schedule', 'text', { placeholder: 'Ex: Sábado, 09h' })}
+        <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
+      `;
+    } else if (isDev) {
+      title = item.id && app.getAt(path) ? 'Editar versículo' : 'Novo versículo';
+      fields = `
+        ${field('Referência', 'reference', 'text', { placeholder: 'Ex: João 3:16' })}
+        ${field('Texto do versículo', 'text', 'textarea', { rows: 3 })}
+        ${field('Tema', 'theme', 'text', { placeholder: 'Ex: Salvação' })}
+        <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
+      `;
+    } else if (isFeel) {
+      title = item.id && app.getAt(path) ? 'Editar palavra por sentimento' : 'Nova palavra';
+      fields = `
+        ${field('Sentimento', 'feeling', 'text', { placeholder: 'Ex: Ansiedade' })}
+        ${field('Ícone (emoji)', 'icon', 'text', { placeholder: 'Ex: 🌊' })}
+        ${field('Título', 'title', 'text', { placeholder: 'Ex: Descanse no cuidado de Deus' })}
+        ${field('Versículo (referência)', 'verse', 'text', { placeholder: 'Ex: Filipenses 4:6-7' })}
+        ${field('Mensagem pastoral', 'text', 'textarea', { rows: 4 })}
+        ${field('Oração', 'prayer', 'textarea', { rows: 2 })}
+      `;
+    } else {
+      return openJsonEditor(path, value);
+    }
+
+    dialog.innerHTML = `<form method="dialog" class="modal-card wide" style="max-width:min(720px,94vw)">
+      <button class="modal-close" value="cancel" aria-label="Fechar">×</button>
+      <h2>${e(title)}</h2>
+      <div class="form-grid">${fields}</div>
+      <div class="row gap wrap">
+        <button class="btn primary" type="button" id="ceSave">Salvar</button>
+        <button class="btn ghost" type="button" id="ceJson">Editar JSON</button>
+        <button class="btn ghost" value="cancel" type="submit">Cancelar</button>
+      </div>
+    </form>`;
+    dialog.showModal();
+    if (window.ImperioEditor) window.ImperioEditor.attachAll(dialog);
+
+    // Bind de imagem (upload/url/clear)
+    dialog.querySelectorAll('[data-image-input]').forEach(input => {
+      input.addEventListener('change', async () => {
+        const name = input.dataset.imageInput;
+        const file = input.files && input.files[0];
+        input.value = '';
+        if (!file || !window.ImperioEditor) return;
+        try {
+          app.toast('Convertendo imagem...');
+          const result = await window.ImperioEditor.toWebp(file, { maxWidth: 1280, maxHeight: 1280, quality: 0.82 });
+          const hidden = dialog.querySelector(`input[name="${name}"]`);
+          if (hidden) hidden.value = result.dataUrl;
+          const prev = dialog.querySelector(`[data-preview-for="${name}"]`);
+          if (prev) prev.innerHTML = `<img src="${result.dataUrl}" alt="">`;
+          app.toast('Imagem pronta.');
+        } catch (err) { app.toast(err.message || 'Erro ao enviar imagem.'); }
+      });
+    });
+    dialog.querySelectorAll('[data-image-url]').forEach(btn => {
+      btn.onclick = () => {
+        const name = btn.dataset.imageUrl;
+        const url = prompt('Cole a URL da imagem:');
+        if (!url) return;
+        if (window.ImperioEditor && !window.ImperioEditor.isSafeUrl(url)) return app.toast('URL inválida.');
+        const hidden = dialog.querySelector(`input[name="${name}"]`);
+        if (hidden) hidden.value = url;
+        const prev = dialog.querySelector(`[data-preview-for="${name}"]`);
+        if (prev) prev.innerHTML = `<img src="${app.escapeHtml(url)}" alt="">`;
+      };
+    });
+    dialog.querySelectorAll('[data-image-clear]').forEach(btn => {
+      btn.onclick = () => {
+        const name = btn.dataset.imageClear;
+        const hidden = dialog.querySelector(`input[name="${name}"]`);
+        if (hidden) hidden.value = '';
+        const prev = dialog.querySelector(`[data-preview-for="${name}"]`);
+        if (prev) prev.innerHTML = '<span class="muted">Sem imagem</span>';
+      };
+    });
+    dialog.querySelectorAll('[data-video-preview]').forEach(wrap => {
+      const name = wrap.dataset.videoPreview;
+      const input = dialog.querySelector(`input[name="${name}"]`);
+      if (input) input.addEventListener('input', () => {
+        const embed = window.ImperioEditor && window.ImperioEditor.embedUrl(input.value);
+        wrap.innerHTML = embed ? `<div class="embed-block"><iframe src="${app.escapeHtml(embed)}" allowfullscreen frameborder="0"></iframe></div>` : '';
+      });
+    });
+
+    document.getElementById('ceSave').onclick = async () => {
+      const form = dialog.querySelector('form');
+      const values = {};
+      form.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.type === 'checkbox') values[el.name] = el.checked;
+        else if (el.type === 'hidden') {
+          if (el.name === 'status' && el.value === 'approved' && coll === 'posts') {
+            const cb = form.querySelector('input[name="status"][type="checkbox"]');
+            values.status = cb && cb.checked ? 'approved' : 'pending';
+          } else values[el.name] = el.value;
+        }
+        else values[el.name] = el.value;
+      });
+      // Sanitiza HTML rico
+      if (values.content && window.ImperioEditor) values.content = window.ImperioEditor.sanitizeHtml(values.content);
+      // Garante status e datas
+      if (isNews || isMedia || isAnn || isAct || isDev || isFeel) {
+        values.visible = form.querySelector('input[name="visible"]') ? form.querySelector('input[name="visible"]').checked : (item.visible !== false);
+      }
+      if (isNews) {
+        values.featured = !!form.querySelector('input[name="featured"]').checked;
+        if (!values.status) values.status = coll === 'news' ? 'approved' : (app.hasRole('lider') ? 'approved' : 'pending');
+        values.authorName = values.author || app.state.user.name;
+        values.createdAt = item.createdAt || new Date().toISOString();
+        values.date = values.date || item.date || new Date().toISOString();
+        if (!values.image && values.content && window.ImperioEditor) values.image = window.ImperioEditor.firstImage(values.content);
+        if (!values.summary && values.content && window.ImperioEditor) values.summary = window.ImperioEditor.excerpt(values.content, 180);
+        if (coll === 'posts') { values.approvedBy = values.status === 'approved' ? app.state.user.id : ''; }
+      }
+      if (isMedia) {
+        values.live = !!form.querySelector('input[name="live"]').checked;
+        values.date = item.date || new Date().toISOString();
+        values.createdAt = item.createdAt || new Date().toISOString();
+      }
+      await app.setAt(path, Object.assign({ id: item.id }, values));
+      dialog.close();
+      app.toast('Conteúdo salvo.');
+    };
+    document.getElementById('ceJson').onclick = () => {
+      const form = dialog.querySelector('form');
+      const values = { id: item.id };
+      form.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.type === 'checkbox') values[el.name] = el.checked;
+        else values[el.name] = el.value;
+      });
+      dialog.close();
+      openJsonEditor(path, Object.assign({}, item, values));
     };
   }
 
