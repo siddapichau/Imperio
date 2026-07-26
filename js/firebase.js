@@ -12,7 +12,9 @@
     projectId: 'imperio-28408',
     storageBucket: 'imperio-28408.firebasestorage.app',
     messagingSenderId: '20222357769',
-    appId: '1:20222357769:web:59d1e33de346efa6b6e3d8'
+    appId: '1:20222357769:web:59d1e33de346efa6b6e3d8',
+    // Client ID OAuth "Web application" do projeto. Usado pelo login nativo do Google no APK.
+    googleWebClientId: '20222357769-24as5ue0cde4q08s47e2shddci2r64f2.apps.googleusercontent.com'
   };
 
   let app = null;
@@ -374,9 +376,23 @@
       if (mode === 'firebase' && auth) {
         const provider = new window.firebase.auth.GoogleAuthProvider();
         try {
+          // === APK (Capacitor) ===
+          // Dentro da WebView do Android o popup do Firebase não funciona: o Google recusa
+          // OAuth em WebView embutida e o domínio interno do app nunca é autorizado no
+          // Firebase Auth. Então usamos a tela nativa de contas do Android, pegamos o
+          // idToken e trocamos por uma sessão Firebase (só REST, sem popup).
+          const native = window.ImperioNativeAuth;
+          if (native && native.isAvailable()) {
+            const idToken = await native.googleIdToken();
+            const credential = window.firebase.auth.GoogleAuthProvider.credential(idToken);
+            const nativeResult = await auth.signInWithCredential(credential);
+            return normalizeAuthUser(nativeResult.user);
+          }
           const result = await auth.signInWithPopup(provider);
           return normalizeAuthUser(result.user);
         } catch (error) {
+          // Erros já tratados pela camada nativa sobem com a mensagem pronta.
+          if (error && typeof error.code === 'string' && error.code.indexOf('imperio/') === 0) throw error;
           // Fluxo padrão Firebase para conta existente com outro provedor (email/senha) mesmo email
           if (error && error.code === 'auth/account-exists-with-different-credential' && error.email) {
             const email = error.email;
@@ -431,6 +447,12 @@
       return user;
     },
     async signOut() {
+      // No APK também encerra a sessão nativa, senão o Android reentra sozinho
+      // na mesma conta sem mostrar o seletor.
+      try {
+        const native = window.ImperioNativeAuth;
+        if (native && native.isAvailable()) await native.signOut();
+      } catch (_) { /* sair do app nunca pode falhar por causa disso */ }
       if (mode === 'firebase' && auth) return auth.signOut();
       setLocalSession(null);
     },

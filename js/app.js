@@ -338,12 +338,22 @@
   };
 
   googleLogin.onclick = async () => {
+    const original = googleLogin.textContent;
+    googleLogin.disabled = true;
+    googleLogin.textContent = 'Abrindo o Google...';
     try {
       await app.signInGoogle();
       authModal.close();
       maybePromptPassword();
     } catch (error) {
+      // Desistir de escolher a conta não é erro: não vale assustar a pessoa com aviso.
+      if (error && error.code === 'imperio/google-cancelled') return;
       app.toast(error.message || 'Falha no Google.');
+      // Mensagens longas de configuração ficam pouco tempo no toast; o log ajuda o suporte.
+      if (error && error.nativeMessage) console.warn('[ImperioGoogle]', error.code, error.nativeMessage);
+    } finally {
+      googleLogin.disabled = false;
+      googleLogin.textContent = original;
     }
   };
 
