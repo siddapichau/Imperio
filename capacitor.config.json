@@ -10,7 +10,7 @@
   },
   "server": {
     "androidScheme": "https",
-    "hostname": "app.imperialbatista.local",
+    "hostname": "localhost",
     "allowNavigation": [
       "imperio-28408.firebaseapp.com",
       "imperio-28408.web.app",

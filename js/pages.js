@@ -87,6 +87,17 @@
     return editor ? editor.excerpt(item.content || '', size || 180) : String(item.content || '').slice(0, size || 180);
   }
 
+  function textOfHtml(value, size) {
+    const editor = window.ImperioEditor;
+    const text = editor ? editor.htmlToText(value || '') : String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const limit = Number(size || 180);
+    return text.length > limit ? text.slice(0, limit).trim() + '…' : text;
+  }
+
+  function descriptionHtml(value) {
+    return value ? richContent(value) : '';
+  }
+
   function setPageBusy(doc, active) {
     if (doc && doc.body) doc.body.dataset.imperioBusy = active === false ? '' : '1';
   }
@@ -171,7 +182,7 @@
           </div>
           <div>
             <div class="section-head"><h2>Próximas datas</h2></div>
-            <div class="grid">${events.map(ev => `<div class="card compact"><h3>${e(ev.title)}</h3><p>${e(ev.description || '')}</p><p class="muted">📍 ${e(ev.location || '')} • ${e(app.formatDateTime(ev.startsAt))}</p></div>`).join('') || '<div class="empty">Sem eventos.</div>'}</div>
+            <div class="grid">${events.map(ev => `<div class="card compact"><h3>${e(ev.title)}</h3><p>${e(textOfHtml(ev.description, 120))}</p><p class="muted">📍 ${e(ev.location || '')} • ${e(app.formatDateTime(ev.startsAt))}</p></div>`).join('') || '<div class="empty">Sem eventos.</div>'}</div>
           </div>
         </section>
 
@@ -214,14 +225,14 @@
   function renderCultos(ctx) {
     const { e, root, list } = ctx;
     const services = visible(list('services'));
-    root.innerHTML = `<div class="page-container"><div class="section-head"><div><h1>Cultos e celebrações</h1><p class="muted">Horários, temas, presença e quizzes de cada culto.</p></div></div><div class="grid three">${services.map(service => `<article class="card"><span class="badge">${e(service.type || 'Culto')}</span><h2>${e(service.title)}</h2><p class="muted">${e(service.weekday || '')} ${service.time ? 'às ' + e(service.time) : ''}</p><p>${e(service.theme || '')}</p><p class="muted">📍 ${e(service.location || '')}<br>🎙️ ${e(service.preacher || '')}</p><div class="row gap wrap"><button class="btn primary" data-presence="culto" data-id="${e(service.id)}">Marcar presença</button><button class="btn ghost" data-nav="quiz">Responder quiz</button></div></article>`).join('') || '<div class="empty">Nenhum culto cadastrado.</div>'}</div></div>`;
+    root.innerHTML = `<div class="page-container"><div class="section-head"><div><h1>Cultos e celebrações</h1><p class="muted">Horários, temas, presença e quizzes de cada culto.</p></div></div><div class="grid three">${services.map(service => `<article class="card"><span class="badge">${e(service.type || 'Culto')}</span><h2>${e(service.title)}</h2><p class="muted">${service.date ? e(app.formatDate(service.date)) + ' • ' : ''}${e(service.weekday || '')} ${service.time ? 'às ' + e(service.time) : ''}</p><p>${e(service.theme || '')}</p>${descriptionHtml(service.description)}<p class="muted">📍 ${e(service.location || '')}<br>🎙️ ${e(service.preacher || '')}</p><div class="row gap wrap"><button class="btn primary" data-presence="culto" data-id="${e(service.id)}">Marcar presença</button><button class="btn ghost" data-nav="quiz">Responder quiz</button></div></article>`).join('') || '<div class="empty">Nenhum culto cadastrado.</div>'}</div></div>`;
   }
 
   function renderAgenda(ctx) {
     const { e, root, list } = ctx;
     const events = visible(list('events')).sort(app.byDateAsc);
     const commemorations = list('commemorations').sort(app.byDateAsc);
-    root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">📅 Agenda</span><h1>Datas, eventos e celebrações</h1><p>Planeje sua participação nos cultos, atividades, ceias, encontros e datas comemorativas.</p></section><section class="section grid two"><div><div class="section-head"><h2>Eventos</h2></div><div class="grid">${events.map(ev => `<article class="card"><div class="card-title-line"><h3>${e(ev.title)}</h3><span class="status">${e(ev.category || 'Evento')}</span></div><p>${e(ev.description || '')}</p><p class="muted">${e(app.formatDateTime(ev.startsAt))} • ${e(ev.location || '')}</p></article>`).join('') || '<div class="empty">Agenda vazia.</div>'}</div></div><div><div class="section-head"><h2>Datas comemorativas</h2></div><div class="grid">${commemorations.map(item => `<article class="card compact"><h3>${e(item.title)}</h3><p>${e(item.description || '')}</p><p class="muted">${e(app.formatDate(item.date))}</p></article>`).join('') || '<div class="empty">Sem datas.</div>'}</div></div></section></div>`;
+    root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">📅 Agenda</span><h1>Datas, eventos e celebrações</h1><p>Planeje sua participação nos cultos, atividades, ceias, encontros e datas comemorativas.</p></section><section class="section grid two"><div><div class="section-head"><h2>Eventos</h2></div><div class="grid">${events.map(ev => `<article class="card"><div class="card-title-line"><h3>${e(ev.title)}</h3><span class="status">${e(ev.category || 'Evento')}</span></div>${descriptionHtml(ev.description)}<p class="muted">${e(app.formatDateTime(ev.startsAt))} • ${e(ev.location || '')}</p></article>`).join('') || '<div class="empty">Agenda vazia.</div>'}</div></div><div><div class="section-head"><h2>Datas comemorativas</h2></div><div class="grid">${commemorations.map(item => `<article class="card compact"><h3>${e(item.title)}</h3><p>${e(textOfHtml(item.description, 140))}</p><p class="muted">${e(app.formatDate(item.date))}</p></article>`).join('') || '<div class="empty">Sem datas.</div>'}</div></div></section></div>`;
   }
 
   function renderVersiculo(ctx) {
@@ -302,7 +313,7 @@
     const { e, root, list } = ctx;
     const activities = visible(list('activities'));
     const posts = list('posts').filter(p => p.status === 'approved').sort(app.byDateDesc).slice(0, 6);
-    root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">🤝 Ministérios</span><h1>Atividades para servir com alegria</h1><p>Participe dos ministérios, ações sociais, louvor, missões e comunhão da igreja.</p></section><section class="section"><div class="section-head"><h2>Ministérios e atividades</h2><button class="btn small" data-nav="postar">Compartilhar notícia</button></div><div class="grid three">${activities.map(a => `<article class="card"><div class="icon-bubble">🤲</div><h3>${e(a.title)}</h3><p>${e(a.description || '')}</p><p class="muted">Líder: ${e(a.leader || 'A definir')}<br>Agenda: ${e(a.schedule || 'A definir')}</p></article>`).join('') || '<div class="empty">Sem atividades.</div>'}</div></section><section class="section"><div class="section-head"><h2>Posts aprovados</h2></div><div class="grid two">${posts.map(p => `<article class="card"><div class="card-title-line"><h3>${e(p.title)}</h3><span class="status approved">${e(p.category || 'Post')}</span></div><p>${e(p.content)}</p><p class="muted">Por ${e(p.authorName || 'Membro')} • ${e(app.formatDate(p.createdAt))}</p></article>`).join('') || '<div class="empty">Nenhum post aprovado ainda.</div>'}</div></section></div>`;
+    root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">🤝 Ministérios</span><h1>Atividades para servir com alegria</h1><p>Participe dos ministérios, ações sociais, louvor, missões e comunhão da igreja.</p></section><section class="section"><div class="section-head"><h2>Ministérios e atividades</h2><button class="btn small" data-nav="postar">Compartilhar notícia</button></div><div class="grid three">${activities.map(a => `<article class="card"><div class="icon-bubble">🤲</div><h3>${e(a.title)}</h3>${descriptionHtml(a.description)}<p class="muted">Líder: ${e(a.leader || 'A definir')}<br>Agenda: ${e(a.schedule || 'A definir')}</p></article>`).join('') || '<div class="empty">Sem atividades.</div>'}</div></section><section class="section"><div class="section-head"><h2>Posts aprovados</h2></div><div class="grid two">${posts.map(p => `<article class="card"><div class="card-title-line"><h3>${e(p.title)}</h3><span class="status approved">${e(p.category || 'Post')}</span></div>${richContent(p.content)}<p class="muted">Por ${e(p.authorName || 'Membro')} • ${e(app.formatDate(p.createdAt))}</p></article>`).join('') || '<div class="empty">Nenhum post aprovado ainda.</div>'}</div></section></div>`;
   }
 
   function renderCelula(ctx) {
@@ -313,7 +324,7 @@
     root.innerHTML = `<div class="page-container"><section class="hero"><span class="badge">🏡 Pequenos grupos</span><h1>Células de comunhão e discipulado</h1><p>Cada célula possui líder, membros, presença e estudos próprios.</p></section>${!me ? `<section class="section">${loginCard(e)}</section>` : ''}<section class="section grid two">${cells.map(cell => {
       const members = users.filter(u => u.cellId === cell.id);
       const isLeader = me && (me.id === cell.leaderId || app.hasRole('pastor'));
-      return `<article class="card"><div class="card-title-line"><div><span class="badge">${e(cell.weekday || '')} ${e(cell.time || '')}</span><h2>${e(cell.name)}</h2></div><span class="status">${members.length} membros</span></div><p>${e(cell.description || '')}</p><p class="muted">Líder: ${e(cell.leaderName || 'A definir')}<br>📍 ${e(cell.address || '')} — ${e(cell.neighborhood || '')}</p><div class="row gap wrap"><button class="btn primary" data-presence="celula" data-id="${e(cell.id)}">Marcar presença</button><button class="btn ghost" data-nav="quiz">Quiz da célula</button></div>${isLeader ? `<div class="section"><h3>Membros da célula</h3><div class="grid">${members.map(m => `<div class="card compact row gap"><span>${app.avatarMarkup(m, 'avatar-sm')}</span><div><strong>${e(m.name)}</strong><p class="muted">${e(m.whatsapp || m.email || '')}</p></div></div>`).join('') || '<p class="muted">Sem membros vinculados.</p>'}</div></div>` : ''}</article>`;
+      return `<article class="card"><div class="card-title-line"><div><span class="badge">${e(cell.weekday || '')} ${e(cell.time || '')}</span><h2>${e(cell.name)}</h2></div><span class="status">${members.length} membros</span></div>${descriptionHtml(cell.description)}<p class="muted">Líder: ${e(cell.leaderName || 'A definir')}<br>📍 ${e(cell.address || '')} — ${e(cell.neighborhood || '')}</p><div class="row gap wrap"><button class="btn primary" data-presence="celula" data-id="${e(cell.id)}">Marcar presença</button><button class="btn ghost" data-nav="quiz">Quiz da célula</button></div>${isLeader ? `<div class="section"><h3>Membros da célula</h3><div class="grid">${members.map(m => `<div class="card compact row gap"><span>${app.avatarMarkup(m, 'avatar-sm')}</span><div><strong>${e(m.name)}</strong><p class="muted">${e(m.whatsapp || m.email || '')}</p></div></div>`).join('') || '<p class="muted">Sem membros vinculados.</p>'}</div></div>` : ''}</article>`;
     }).join('') || '<div class="empty">Nenhuma célula cadastrada.</div>'}</section></div>`;
   }
 
@@ -733,7 +744,7 @@
         <h1>Pregações, louvores e transmissões</h1>
         <p>Assista aos cultos, reveja mensagens e escolha se quer abrir aqui no app ou direto no YouTube.</p>
       </section>
-      ${live ? `<section class="section card highlight"><span class="badge">🔴 AO VIVO</span><h2>${e(live.title)}</h2>${mediaEmbedUrl(live) ? `<div class="embed-block"><iframe src="${e(mediaEmbedUrl(live))}" loading="lazy" allowfullscreen frameborder="0"></iframe></div>` : ''}<p>${e(live.description || '')}</p>${mediaWatchUrl(live) ? `<a class="btn primary" href="${e(mediaWatchUrl(live))}" target="_blank" rel="noopener">Abrir transmissão</a>` : ''}</section>` : ''}
+      ${live ? `<section class="section card highlight"><span class="badge">🔴 AO VIVO</span><h2>${e(live.title)}</h2>${mediaEmbedUrl(live) ? `<div class="embed-block"><iframe src="${e(mediaEmbedUrl(live))}" loading="lazy" allowfullscreen frameborder="0"></iframe></div>` : ''}${descriptionHtml(live.description)}${mediaWatchUrl(live) ? `<a class="btn primary" href="${e(mediaWatchUrl(live))}" target="_blank" rel="noopener">Abrir transmissão</a>` : ''}</section>` : ''}
       <section class="section">
         <div class="section-head"><div><h2>Biblioteca</h2><p class="muted">Toque na imagem para assistir. Quando for YouTube, você também pode abrir no YouTube.</p></div></div>
         <div class="grid three">${media.filter(item => !item.live).map(item => {
@@ -749,12 +760,12 @@
             <span class="badge">${e(item.category || 'Pregação')}</span>
             <h3>${e(item.title)}</h3>
             <p class="muted">${e(item.speaker || '')} • ${e(app.formatDate(item.date || item.createdAt))}</p>
-            <p>${e(item.description || '')}</p>
+            <p>${e(textOfHtml(item.description, 160))}</p>
             <div class="row gap wrap">
               ${embed || watch ? `<button class="btn small primary" type="button" data-open-media="${e(item.id)}">Assistir no app</button>` : ''}
               ${watch ? `<a class="btn small ghost" href="${e(watch)}" target="_blank" rel="noopener">Ver no YouTube</a>` : ''}
             </div>
-            ${shareButtons(e, { title: item.title, text: item.description || '', url: watch || app.pageUrl('midia'), image })}
+            ${shareButtons(e, { title: item.title, text: textOfHtml(item.description, 160), url: watch || app.pageUrl('midia'), image })}
           </article>`;
         }).join('') || `<div class="empty">Nenhuma mídia publicada ainda.${settings.social && settings.social.youtube ? ` Acompanhe no <a href="${e(settings.social.youtube)}" target="_blank" rel="noopener">YouTube</a>.` : ''}</div>`}</div>
       </section>
@@ -777,7 +788,7 @@
         const days = app.asArray(plan.days || {});
         const done = days.filter(day => progress[plan.id + ':' + day.id]).length;
         const percent = days.length ? Math.round((done / days.length) * 100) : 0;
-        return `<article class="card"><div class="card-title-line"><h2>${e(plan.title)}</h2><span class="status">${percent}%</span></div><p>${e(plan.description || '')}</p><div class="progress-bar"><span style="width:${percent}%"></span></div><div class="grid section">${days.slice(0, 40).map(day => `<label class="checkbox-line reading-day"><input type="checkbox" data-reading="${e(plan.id)}:${e(day.id)}" ${progress[plan.id + ':' + day.id] ? 'checked' : ''} ${me ? '' : 'disabled'}><span><strong>${e(day.label || day.id)}</strong> — ${e(day.passage || '')}</span></label>`).join('') || '<p class="muted">Plano sem dias cadastrados.</p>'}</div></article>`;
+        return `<article class="card"><div class="card-title-line"><h2>${e(plan.title)}</h2><span class="status">${percent}%</span></div>${descriptionHtml(plan.description)}<div class="progress-bar"><span style="width:${percent}%"></span></div><div class="grid section">${days.slice(0, 40).map(day => `<label class="checkbox-line reading-day"><input type="checkbox" data-reading="${e(plan.id)}:${e(day.id)}" ${progress[plan.id + ':' + day.id] ? 'checked' : ''} ${me ? '' : 'disabled'}><span><strong>${e(day.label || day.id)}</strong> — ${e(day.passage || '')}</span></label>`).join('') || '<p class="muted">Plano sem dias cadastrados.</p>'}</div></article>`;
       }).join('') || '<div class="empty">Nenhum plano de leitura cadastrado. O administrador pode criar na aba Devocionais.</div>'}</section>
     </div>`;
   }
@@ -1610,12 +1621,12 @@
       <h2>${e(item.title || 'Mídia')}</h2>
       ${embed ? `<div class="embed-block"><iframe src="${e(embed)}" loading="lazy" allowfullscreen frameborder="0"></iframe></div>` : (image ? `<img class="modal-cover" src="${e(displaySrc(image))}" alt="${e(item.title || '')}">` : '')}
       <p class="muted">${e(item.speaker || '')}${item.speaker ? ' • ' : ''}${e(app.formatDate(item.date || item.createdAt))}</p>
-      <p>${e(item.description || '')}</p>
+      ${descriptionHtml(item.description)}
       <div class="row gap wrap">
         ${watch ? `<a class="btn primary" href="${e(watch)}" target="_blank" rel="noopener">Abrir no YouTube</a>` : ''}
         <button class="btn ghost" value="cancel" type="submit">Fechar</button>
       </div>
-      ${shareButtons(e, { title: item.title, text: item.description || '', url: watch || app.pageUrl('midia'), image })}
+      ${shareButtons(e, { title: item.title, text: textOfHtml(item.description, 160), url: watch || app.pageUrl('midia'), image })}
     </form>`;
     modal.querySelectorAll('[data-share]').forEach(btn => {
       btn.type = 'button';
