@@ -23,7 +23,6 @@
     "SplashScreen": {
       "launchShowDuration": 1200,
       "backgroundColor": "#4b0f43",
-      "androidSplashResourceName": "splash",
       "showSpinner": false,
       "splashFullScreen": true,
       "splashImmersive": true
