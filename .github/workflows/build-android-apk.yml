@@ -1,4 +1,3 @@
-
 name: Build Android APK
 
 on:
@@ -8,10 +7,15 @@ on:
   push:
     branches:
       - main
+      - arena/**
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-apk:
@@ -46,8 +50,29 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Gerar APK com logo roxa vinho
-        run: npm run android:build:debug
+      - name: Validar configuração do APK para Firebase Auth
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const cfg = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
+          const host = cfg.server && cfg.server.hostname;
+          const scheme = cfg.server && cfg.server.androidScheme;
+          if (scheme !== 'https') throw new Error('server.androidScheme precisa ser https para Firebase Auth no APK.');
+          if (host !== 'localhost') {
+            throw new Error(`server.hostname precisa ser localhost no APK. Host atual: ${host || '(vazio)'}.`);
+          }
+          console.log(`✅ APK será gerado em origem segura: ${scheme}://${host}`);
+          console.log('✅ Essa origem evita quebra de login Email/Senha e Google por domínio não autorizado no Firebase.');
+          NODE
+
+      - name: Preparar web/Android do Capacitor
+        run: npm run android:prepare
+
+      - name: Gerar APK debug
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
 
       - name: Separar APK para download
         run: |
