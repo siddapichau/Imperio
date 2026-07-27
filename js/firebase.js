@@ -53,6 +53,14 @@
         app = window.firebase.apps && window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(config);
         db = window.firebase.database(app);
         auth = window.firebase.auth(app);
+        try {
+          // Mantém a sessão dentro do APK/WebView. Sem isso alguns Androids limpam o login ao reabrir o app.
+          await auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
+        } catch (_) {}
+        try {
+          // Necessário para finalizar o retorno do login Google por redirecionamento no APK.
+          auth.getRedirectResult().catch(error => console.warn('[ImperioFirebase] Google redirect falhou:', error));
+        } catch (_) {}
         mode = 'firebase';
         toastLog('Conectado ao Firebase Realtime Database.');
         return { mode, config };
@@ -214,6 +222,29 @@
     return String(value || '').trim().toLowerCase();
   }
 
+  function isNativeRuntime() {
+    try {
+      return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    } catch (_) { return false; }
+  }
+
+  function friendlyAuthError(error, context) {
+    const code = (error && error.code) || '';
+    if (code === 'auth/unauthorized-domain') {
+      return new Error('Domínio do APK não autorizado no Firebase Auth. Gere o APK com hostname localhost (já ajustado neste código) ou adicione o domínio mostrado no erro em Firebase > Authentication > Settings > Authorized domains.');
+    }
+    if (code === 'auth/operation-not-allowed') {
+      return new Error(context === 'google'
+        ? 'Login Google não está ativado no Firebase Authentication. Ative o provedor Google no console do Firebase.'
+        : 'Login por Email/Senha não está ativado no Firebase Authentication. Ative Email/Senha no console do Firebase.');
+    }
+    if (code === 'auth/api-key-not-valid' || code === 'auth/invalid-api-key') {
+      return new Error('A chave Web API do Firebase não está válida para este APK/projeto. Confira a configuração Firebase Web no painel.');
+    }
+    if (code === 'auth/network-request-failed') return new Error('Sem conexão com o Firebase. Verifique a internet do celular e tente novamente.');
+    return error;
+  }
+
   function findUserByEmail(usersObj, email) {
     const norm = normalizeIdentifier(email);
     if (!norm) return null;
@@ -286,7 +317,7 @@
           if (code === 'auth/too-many-requests') throw new Error('Muitas tentativas seguidas. Aguarde alguns minutos ou redefina a senha por email.');
           if (code === 'auth/network-request-failed') throw new Error('Sem conexão com o servidor. Verifique sua internet e tente de novo.');
           if (code === 'auth/user-disabled') throw new Error('Esta conta foi desativada. Fale com a secretaria da igreja.');
-          throw e;
+          throw friendlyAuthError(e, 'email');
         }
       }
       const data = getLocal('appData') || {};
@@ -373,10 +404,24 @@
     async signInGoogle() {
       if (mode === 'firebase' && auth) {
         const provider = new window.firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         try {
           const result = await auth.signInWithPopup(provider);
           return normalizeAuthUser(result.user);
         } catch (error) {
+          const code = (error && error.code) || '';
+          const popupFailedInApk = isNativeRuntime() && [
+            'auth/popup-blocked',
+            'auth/popup-closed-by-user',
+            'auth/cancelled-popup-request',
+            'auth/operation-not-supported-in-this-environment',
+            'auth/web-storage-unsupported'
+          ].includes(code);
+          if (popupFailedInApk && auth.signInWithRedirect) {
+            // Android WebView/Capacitor nem sempre permite popup. O redirect é o fluxo compatível com APK.
+            await auth.signInWithRedirect(provider);
+            return new Promise(() => {});
+          }
           // Fluxo padrão Firebase para conta existente com outro provedor (email/senha) mesmo email
           if (error && error.code === 'auth/account-exists-with-different-credential' && error.email) {
             const email = error.email;
@@ -400,7 +445,7 @@
               throw error;
             }
           }
-          throw error;
+          throw friendlyAuthError(error, 'google');
         }
       }
       // Modo local/demo: tenta reutilizar conta existente com mesmo email Google demo ou com email já cadastrado

@@ -88,6 +88,15 @@
     donations: { donorName: 'Doador', amount: 0, purpose: 'Oferta', method: 'pix', status: 'confirmada', createdAt: new Date().toISOString() }
   };
 
+  // Coleções que abrem formulário amigável (campos separados) em vez do editor JSON.
+  const FORM_COLLECTIONS = new Set([
+    'news', 'posts', 'media', 'announcements', 'activities', 'devotionalVerses', 'feelingWords',
+    'services', 'events', 'cells', 'commemorations', 'readingPlans', 'quizzes'
+  ]);
+
+  function collectionFromPath(path) { return String(path || '').split('/')[0]; }
+  function usesFormEditor(path) { return FORM_COLLECTIONS.has(collectionFromPath(path)); }
+
   function e(value) { return app.escapeHtml(value); }
   function list(path) { return app.asArray(app.getAt(path, {})); }
   function idFor(prefix) { return app.uid(prefix).replace(/-/g, '_'); }
@@ -180,8 +189,12 @@
 
   function collectionSection(title, path, description) {
     const items = list(path).sort(app.byDateDesc);
-    const prefix = path.slice(0, 4);
-    return `<section class="card"><div class="section-head"><div><h2>${title}</h2><p class="muted">${description || 'Edite adicionando, alterando ou excluindo itens.'}</p></div><button class="btn primary small" data-add-collection="${path}">Adicionar</button></div><div class="collection-list">${items.map(item => `<article class="card compact collection-card"><div><div class="card-title-line"><h3>${e(item.title || item.name || item.id)}</h3>${item.status ? `<span>${statusText(item.status)}</span>` : ''}</div><p class="muted">${e(item.description || item.summary || item.text || item.content || item.weekday || '')}</p><small class="muted">ID: ${e(item.id)}</small></div><div class="row gap wrap"><button class="btn small" data-edit-path="${path}/${e(item.id)}">Editar</button><button class="btn small danger" data-delete-path="${path}/${e(item.id)}">Excluir</button></div></article>`).join('') || '<div class="empty">Nenhum item cadastrado.</div>'}</div></section>`;
+    const preview = item => {
+      const raw = item.description || item.summary || item.text || item.content || item.weekday || '';
+      if (window.ImperioEditor) return window.ImperioEditor.excerpt(raw, 180);
+      return String(raw).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+    };
+    return `<section class="card"><div class="section-head"><div><h2>${title}</h2><p class="muted">${description || 'Edite adicionando, alterando ou excluindo itens.'}</p></div><button class="btn primary small" data-add-collection="${path}">Adicionar</button></div><div class="collection-list">${items.map(item => `<article class="card compact collection-card"><div><div class="card-title-line"><h3>${e(item.title || item.name || item.id)}</h3>${item.status ? `<span>${statusText(item.status)}</span>` : ''}</div><p class="muted">${e(preview(item))}</p><small class="muted">ID: ${e(item.id)}</small></div><div class="row gap wrap"><button class="btn small" data-edit-path="${path}/${e(item.id)}">Editar</button><button class="btn small danger" data-delete-path="${path}/${e(item.id)}">Excluir</button></div></article>`).join('') || '<div class="empty">Nenhum item cadastrado.</div>'}</div></section>`;
   }
 
   function statusText(status) {
@@ -650,17 +663,14 @@
       if (!canWritePath(path)) return denyWrite(path);
       const id = idFor(path.slice(0, 5));
       const template = Object.assign({ id }, templates[path] || { id, title: 'Novo item' });
-      // Para conteúdo principal (notícias, posts, mídia) usa formulário rico com editor.
-      if (path === 'news' || path === 'posts' || path === 'media' || path === 'announcements' || path === 'activities' || path === 'devotionalVerses' || path === 'feelingWords') {
-        openContentEditor(path + '/' + id, template);
-      } else {
-        openJsonEditor(path + '/' + id, template);
-      }
+      // Para coleções principais usa formulário amigável com campos separados (e editor rico quando houver descrição/conteúdo).
+      if (usesFormEditor(path)) openContentEditor(path + '/' + id, template);
+      else openJsonEditor(path + '/' + id, template);
     });
     // Botão "editar" em itens de coleções com conteúdo rico também usa editor rico.
     root.querySelectorAll('[data-edit-path]').forEach(btn => {
-      // Sobrescreve apenas para content collections — outros continuam com JSON.
-      if (!/^(news|posts|media|announcements|activities|devotionalVerses|feelingWords)\//.test(btn.dataset.editPath)) return;
+      // Sobrescreve apenas para coleções com formulário amigável — outros continuam com JSON.
+      if (!usesFormEditor(btn.dataset.editPath)) return;
       btn.onclick = () => {
         const path = btn.dataset.editPath;
         if (!canWritePath(path)) return denyWrite(path);
@@ -998,10 +1008,55 @@
     const isAct = coll === 'activities';
     const isDev = coll === 'devotionalVerses';
     const isFeel = coll === 'feelingWords';
+    const isService = coll === 'services';
+    const isEvent = coll === 'events';
+    const isCell = coll === 'cells';
+    const isCommemoration = coll === 'commemorations';
+    const isReadingPlan = coll === 'readingPlans';
+    const isQuiz = coll === 'quizzes';
+
+    const toLocalInput = value => {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+    const fromLocalInput = value => {
+      if (!value) return '';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+    };
+    const daysToText = days => app.asArray(days || {}).sort((a, b) => String(a.id || a.label).localeCompare(String(b.id || b.label), 'pt-BR', { numeric: true })).map(day => `${day.label || day.id || ''} | ${day.passage || ''}`).join('\n');
+    const textToDays = text => {
+      const out = {};
+      String(text || '').split(/\n+/).map(line => line.trim()).filter(Boolean).forEach((line, index) => {
+        const parts = line.split('|').map(part => part.trim());
+        const id = 'd' + (index + 1);
+        out[id] = { id, label: parts[0] || ('Dia ' + (index + 1)), passage: parts.slice(1).join(' | ') || '' };
+      });
+      return out;
+    };
+    const quizQuestionsToText = questions => (questions || []).map((q, index) => {
+      const opts = (q.options || []).map((opt, oi) => `${oi === Number(q.answer || 0) ? '*' : ''}${opt}`).join(' | ');
+      return `${index + 1}. ${q.text || ''}\n${opts}`;
+    }).join('\n\n');
+    const textToQuizQuestions = text => String(text || '').split(/\n\s*\n/).map((block, index) => {
+      const lines = block.split(/\n/).map(line => line.trim()).filter(Boolean);
+      if (!lines.length) return null;
+      const textLine = lines[0].replace(/^\d+[.)]\s*/, '');
+      const optionLine = lines.slice(1).join(' | ');
+      const options = optionLine.split('|').map(opt => opt.trim()).filter(Boolean);
+      let answer = Math.max(0, options.findIndex(opt => opt.startsWith('*')));
+      const cleanOptions = options.map(opt => opt.replace(/^\*/, '').trim());
+      return { text: textLine || ('Pergunta ' + (index + 1)), options: cleanOptions.length ? cleanOptions : ['Opção A', 'Opção B', 'Opção C', 'Opção D'], answer: answer < 0 ? 0 : answer };
+    }).filter(Boolean);
 
     const field = (label, name, type, opts) => {
       opts = opts || {};
-      const val = item[name] != null ? item[name] : (opts.default || '');
+      let val = item[name] != null ? item[name] : (opts.default || '');
+      if (type === 'datetime-local') val = toLocalInput(val);
+      if (type === 'date') val = String(val || '').slice(0, 10);
       if (type === 'textarea') {
         return `<label class="full">${label}<textarea name="${name}" rows="${opts.rows || 4}" placeholder="${opts.placeholder || ''}">${e(val)}</textarea></label>`;
       }
@@ -1069,7 +1124,7 @@
         ${field('Pregador/orador', 'speaker', 'text')}
         ${field('Link do vídeo (YouTube/Vimeo) ou iframe', 'embed', 'video')}
         ${field('Imagem de capa (opcional)', 'image', 'file')}
-        ${field('Descrição', 'description', 'textarea', { rows: 3 })}
+        ${field('Descrição', 'description', 'richtext', { min: 220, placeholder: 'Resumo, detalhes da mídia, links e observações...' })}
         <div class="full row gap wrap">
           <label class="checkbox-line"><input type="checkbox" name="live" ${item.live ? 'checked' : ''}><span>🔴 Transmissão AO VIVO</span></label>
           <label class="checkbox-line"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
@@ -1087,7 +1142,7 @@
       title = item.id && app.getAt(path) ? 'Editar atividade' : 'Nova atividade';
       fields = `
         ${field('Nome da atividade/ministério', 'title', 'text', { placeholder: 'Ex: Ação social' })}
-        ${field('Descrição', 'description', 'textarea', { rows: 4 })}
+        ${field('Descrição', 'description', 'richtext', { min: 220, placeholder: 'Descreva a atividade com formatação, listas, imagem ou link se precisar...' })}
         ${field('Líder/responsável', 'leader', 'text')}
         ${field('Agenda/horário', 'schedule', 'text', { placeholder: 'Ex: Sábado, 09h' })}
         <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
@@ -1109,6 +1164,77 @@
         ${field('Versículo (referência)', 'verse', 'text', { placeholder: 'Ex: Filipenses 4:6-7' })}
         ${field('Mensagem pastoral', 'text', 'textarea', { rows: 4 })}
         ${field('Oração', 'prayer', 'textarea', { rows: 2 })}
+      `;
+    } else if (isService) {
+      title = item.id && app.getAt(path) ? 'Editar culto' : 'Novo culto';
+      fields = `
+        ${field('Título do culto', 'title', 'text', { placeholder: 'Ex: Culto de Celebração' })}
+        ${field('Tipo', 'type', 'select', { options: [
+          {v:'Culto',l:'Culto'}, {v:'Ensino',l:'Ensino/EBD'}, {v:'Oração',l:'Oração'}, {v:'Ceia',l:'Ceia'}, {v:'Especial',l:'Especial'}
+        ]})}
+        ${field('Dia da semana', 'weekday', 'select', { options: ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'].map(day => ({ v: day, l: day })) })}
+        ${field('Horário', 'time', 'time', { default: '19:00' })}
+        ${field('Data específica (opcional)', 'date', 'date')}
+        ${field('Local', 'location', 'text', { placeholder: 'Ex: Templo principal' })}
+        ${field('Pregador/orador', 'preacher', 'text')}
+        ${field('Tema', 'theme', 'text', { placeholder: 'Ex: Graça que transforma' })}
+        ${field('Descrição/observações', 'description', 'richtext', { min: 180, placeholder: 'Detalhes do culto, série, observações ou chamada para participação...' })}
+        <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
+      `;
+    } else if (isEvent) {
+      title = item.id && app.getAt(path) ? 'Editar evento' : 'Novo evento';
+      fields = `
+        ${field('Título do evento', 'title', 'text', { placeholder: 'Ex: Encontro de Famílias' })}
+        ${field('Categoria', 'category', 'select', { options: [
+          {v:'Evento',l:'Evento'}, {v:'Culto',l:'Culto'}, {v:'Família',l:'Família'}, {v:'Jovens',l:'Jovens'}, {v:'Missões',l:'Missões'}, {v:'Ação social',l:'Ação social'}, {v:'Outro',l:'Outro'}
+        ]})}
+        ${field('Início', 'startsAt', 'datetime-local', { default: new Date().toISOString() })}
+        ${field('Término (opcional)', 'endsAt', 'datetime-local')}
+        ${field('Local', 'location', 'text')}
+        ${field('Imagem do evento (opcional)', 'image', 'file')}
+        ${field('Descrição', 'description', 'richtext', { min: 220, placeholder: 'Detalhes do evento, programação, inscrição, observações...' })}
+        <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
+      `;
+    } else if (isCell) {
+      const users = list('users').sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      const leaderOptions = [{ v: '', l: 'Selecionar líder...' }].concat(users.map(u => ({ v: u.id, l: `${u.name || u.email || u.id}${u.email ? ' — ' + u.email : ''}` })));
+      title = item.id && app.getAt(path) ? 'Editar célula' : 'Nova célula';
+      fields = `
+        ${field('Nome da célula', 'name', 'text', { placeholder: 'Ex: Célula Fé Viva' })}
+        ${field('Líder cadastrado', 'leaderId', 'select', { options: leaderOptions })}
+        ${field('Nome do líder (aparece no app)', 'leaderName', 'text', { placeholder: 'Ex: Líder Ana' })}
+        ${field('Dia da semana', 'weekday', 'select', { options: ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'].map(day => ({ v: day, l: day })) })}
+        ${field('Horário', 'time', 'time', { default: '20:00' })}
+        ${field('Bairro', 'neighborhood', 'text')}
+        ${field('Endereço/local', 'address', 'text', { placeholder: 'Casa, salão ou endereço completo' })}
+        ${field('Descrição', 'description', 'richtext', { min: 200, placeholder: 'Descreva a célula, público, estudo, acolhimento...' })}
+        <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
+      `;
+    } else if (isCommemoration) {
+      title = item.id && app.getAt(path) ? 'Editar data comemorativa' : 'Nova data comemorativa';
+      fields = `
+        ${field('Título', 'title', 'text', { placeholder: 'Ex: Dia das Mães' })}
+        ${field('Data', 'date', 'date', { default: new Date().toISOString().slice(0, 10) })}
+        ${field('Descrição', 'description', 'richtext', { min: 180 })}
+      `;
+    } else if (isReadingPlan) {
+      title = item.id && app.getAt(path) ? 'Editar plano de leitura' : 'Novo plano de leitura';
+      fields = `
+        ${field('Título do plano', 'title', 'text', { placeholder: 'Ex: Evangelho de João em 21 dias' })}
+        ${field('Descrição', 'description', 'richtext', { min: 200 })}
+        <label class="full">Dias do plano <small class="muted">Use uma linha por dia: Dia 1 | João 1</small><textarea name="daysText" rows="10" placeholder="Dia 1 | João 1&#10;Dia 2 | João 2">${e(daysToText(item.days))}</textarea></label>
+        <label class="checkbox-line full"><input type="checkbox" name="visible" ${item.visible !== false ? 'checked' : ''}><span>Visível no app</span></label>
+      `;
+    } else if (isQuiz) {
+      const services = list('services').map(svc => ({ v: svc.id, l: 'Culto: ' + (svc.title || svc.id) }));
+      const cells = list('cells').map(cell => ({ v: cell.id, l: 'Célula: ' + (cell.name || cell.id) }));
+      title = item.id && app.getAt(path) ? 'Editar quiz' : 'Novo quiz';
+      fields = `
+        ${field('Título do quiz', 'title', 'text', { placeholder: 'Ex: Quiz do Culto — Graça' })}
+        ${field('Tipo', 'scope', 'select', { options: [{v:'culto',l:'Culto'}, {v:'celula',l:'Célula'}, {v:'geral',l:'Geral'}] })}
+        ${field('Vincular a culto/célula (opcional)', 'targetId', 'select', { options: [{v:'',l:'Sem vínculo'}].concat(services, cells) })}
+        <label class="full">Perguntas <small class="muted">Separe perguntas por linha em branco. Marque a resposta correta com *.</small><textarea name="questionsText" rows="12" placeholder="1. Pergunta&#10;*Resposta correta | Outra opção | Outra opção | Outra opção">${e(quizQuestionsToText(item.questions || []))}</textarea></label>
+        <label class="checkbox-line full"><input type="checkbox" name="active" ${item.active !== false ? 'checked' : ''}><span>Quiz ativo</span></label>
       `;
     } else {
       return openJsonEditor(path, value);
@@ -1190,8 +1316,9 @@
       });
       // Sanitiza HTML rico
       if (values.content && window.ImperioEditor) values.content = window.ImperioEditor.sanitizeHtml(values.content);
-      // Garante status e datas
-      if (isNews || isMedia || isAnn || isAct || isDev || isFeel) {
+      if (values.description && window.ImperioEditor) values.description = window.ImperioEditor.sanitizeHtml(values.description);
+      // Garante status, visibilidade e datas
+      if (isNews || isMedia || isAnn || isAct || isDev || isFeel || isService || isEvent || isCell || isCommemoration || isReadingPlan) {
         values.visible = form.querySelector('input[name="visible"]') ? form.querySelector('input[name="visible"]').checked : (item.visible !== false);
       }
       if (isNews) {
@@ -1207,6 +1334,29 @@
       if (isMedia) {
         values.live = !!form.querySelector('input[name="live"]').checked;
         values.date = item.date || new Date().toISOString();
+        values.createdAt = item.createdAt || new Date().toISOString();
+      }
+      if (isEvent) {
+        values.startsAt = fromLocalInput(values.startsAt) || item.startsAt || new Date().toISOString();
+        values.endsAt = fromLocalInput(values.endsAt);
+        values.createdAt = item.createdAt || new Date().toISOString();
+      }
+      if (isService) {
+        values.date = values.date || '';
+        values.createdAt = item.createdAt || new Date().toISOString();
+      }
+      if (isCell && values.leaderId && !String(values.leaderName || '').trim()) {
+        const leader = app.getAt('users/' + values.leaderId, null);
+        if (leader) values.leaderName = leader.name || leader.email || '';
+      }
+      if (isReadingPlan) {
+        values.days = textToDays(values.daysText);
+        delete values.daysText;
+      }
+      if (isQuiz) {
+        values.questions = textToQuizQuestions(values.questionsText);
+        delete values.questionsText;
+        values.active = !!form.querySelector('input[name="active"]').checked;
         values.createdAt = item.createdAt || new Date().toISOString();
       }
       await app.setAt(path, Object.assign({ id: item.id }, values));
