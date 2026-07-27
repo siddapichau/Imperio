@@ -1,5 +1,4 @@
 name: Build Android APK
-
 on:
   pull_request:
     branches:
@@ -9,47 +8,37 @@ on:
       - main
       - arena/**
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: android-apk-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   build-apk:
     name: Gerar APK Android
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
-
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Instalar SDK Android 36
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
-
       - name: Instalar dependências
         run: npm ci
-
       - name: Validar configuração do APK para Firebase Auth
         run: |
           node - <<'NODE'
@@ -64,22 +53,18 @@ jobs:
           console.log(`✅ APK será gerado em origem segura: ${scheme}://${host}`);
           console.log('✅ Essa origem evita quebra de login Email/Senha e Google por domínio não autorizado no Firebase.');
           NODE
-
       - name: Preparar web/Android do Capacitor
         run: npm run android:prepare
-
       - name: Gerar APK debug
         run: |
           cd android
           chmod +x ./gradlew
           ./gradlew assembleDebug
-
       - name: Separar APK para download
         run: |
           mkdir -p artifacts
           cp android/app/build/outputs/apk/debug/app-debug.apk "artifacts/Igreja-Imperial-Batista.apk"
           ls -lh artifacts
-
       - name: Publicar APK nos artifacts do GitHub Actions
         uses: actions/upload-artifact@v4
         with:
